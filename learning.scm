@@ -8,4 +8,13 @@
  (display (string-append result " from display!\n"))
  result)
 
-(display (call-with-output-string (lambda (port) (display "second hello world" port))))
+(display (call-with-output-string (lambda (port) (display "second hello world\n" port))))
+
+(define x 4)
+
+(make-escaper)
+
+(define escape-* (escaper *))
+
+; the waiting + is abandoned
+(+ (escape-* 5 2) 3)
