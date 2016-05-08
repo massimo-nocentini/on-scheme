@@ -30,6 +30,9 @@
         (eval sexp-unevaluated)
        ))))
 
-
+    ; the following syntax works only with interpreted code.
+    #;(define-syntax λ
+     (syntax-rules ()
+      ((λ args . body) (lambda args . body))))
 
 

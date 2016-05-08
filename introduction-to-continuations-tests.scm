@@ -6,20 +6,82 @@
 (make-escaper)
 
 
-(display "\n--- about contexts ---\n")
+(display "\n--- Contexts ---\n")
+
+#|
+    > A `context` is a procedure of one variable ▢ , pronounced "hole", to
+    > distinguish contexts from other procedures; formally, if `e` is a subexpression
+    > of `E`, we use the terminology that "the procedure `c` is a context of `e` in `E`".
+    > In the absence of side effects, the procedure `c` applied to the value of `e` is
+    > the value of `E`.
+|#
 
 (let ((sexp '(+ 3 (* 4 (+ 5 6))))
       (sub-sexp '(+ 5 6))
       (context '(lambda (▢ ) (+ 3 (* 4 ▢ ))))) 
- (display "context of '(+ 5 6) in '(+ 3 (* 4 (+ 5 6))): ")
+ (display "\ncontext of '(+ 5 6) in '(+ 3 (* 4 (+ 5 6))): ")
  (display context))
 
+#|
+    > Let us next extend the mechanism for creating contexts. The second step,
+    > namely lambda-abstraction, remains the same, but the first, namely identify
+    > the subexpression `e` and replacing it with ▢ , does more. 
+    > Now we extend the first step by *evaluating* the expression with the hole ▢ :
+    > when evaluation cannot proceed because of the ▢ , we have finished the first step.
+    > ** Thus, contexts are procedures created at the point in the computation where
+    > we can no longer compute because of the existence of ▢ **
+|#
 
-(display "\n--- about escape procedures ---\n")
+    (let ((sexp '(letrec ((sum+n (lambda (n)
+                                  (if (zero? n) 
+                                   1
+                                   (+ (add1 n) (sum+n (sub1 n)))))))
+                  (* 10 (sum+n 5))))
+          (sub-sexp '(add1 3))
+          (context '(lambda (▢ ) (* 10 (+ 6 (+ 5 (+ ▢ (+ 3 (+ 2 1)))))))))
+     (display "\ncontext of '(add1 3) in '(* 10 (sum+n 5)): ")
+     (display context))
 
-;(define escape-* (escaper *))
+#|
+    > A context might involve the use of `set!`. In the following snippet,
+    > the free variable `n`, initially `1`, is taken from the `let` expression.
+    > Each time the context is invoked, the variable `n` is incremented accordingly;
+    > therefore, **it follows that contexts are procedures that may even maintain state**.
+|#
+    (let ((sexp '(begin
+                  (display 0)
+                  (let ((n 1))
+                   (if (zero? n)
+                    (display (+ 3 (* 4 (+ 5 6))))
+                    (display (* (+ (* 3 4) 5) 2)))
+                   (set! n (+ n 2))
+                   n)))
+          (sub-sexp '(* 3 4))
+          (context '(lambda (▢ ) (begin
+                                  (display 0)
+                                  (display (* (+ ▢ 5) 2))
+                                  (set! n (+ n 2))
+                                  n))))
+     (display "\ncontext of '(* 3 4) in\n")
+     (pretty-print sexp)
+     (display "\nis:\n")
+     (pretty-print context))
 
-;(tester 10 (+ ((escape-*) 5 2) 3))
+(display "\n--- Escape procedures ---\n")
+
+#|
+    > An `escape` procedure upon invocation yields a value, but never passes
+    > that value to others: when an escape procedure is invoked, its result *is*
+    > the result of the entire computation, anything else awaiting the result 
+    > is ignored.
+|#
+
+#|
+    > At this time we don't have a mechanism for creating escape procedures,
+    > so let us further assume there is a procedure `escaper` that takes any
+    > procedure as an argument and returns a similarly defined, namely with
+    > the same behavior, escape procedure.
+|#
 
 (tester 10 (+ ((escaper *) 5 2) 3))
 
@@ -48,6 +110,17 @@
                    5) 
                 4))
 
+#|
+    > In the next example, the division awaits the addition and since the
+    > addition has been abandoned by escape invocation, the division has also
+    > been abandoned. This behavior can be characterized by an equation; if `e`
+    > is an escape procedure and `f` is any procedure, then `(compose f e) = e`
+    > -- that is, `(f (e expr))` is the same as `(e expr)`, forall expression `expr`.
+    > Proof. The context of `(e expr)` in `(f (e expr))` is `(λ (▢ ) (f ▢ ))` which is
+    > the same as `f`; since the result of `(f (e expr))` is the result of `(e expr)`,
+    > we say that **an escape invocation abandons its context**.
+|#
+
 (tester 8 (/ (+ ((escaper (lambda (x)
                            (- (* x 3) 7))) 
                  5) 
@@ -62,12 +135,30 @@
      (let ((escape-cons (escaper cons)))
       (escape-cons 1 (escape-cons 2 (escape-cons 3 '())))))
 
-    ; 16.5
+    ; 16.6.1
+    (tester "reset invoked" 
+     (let ((reset (lambda ()
+                   (let ((escape (escaper (lambda () (display "reset invoked")))))
+                    (escape)))))
+      (cons 1 (reset))))
+
+    ; 16.6.2
     (tester '(2)
      (let ((reset (lambda ()
                    ((escaper (lambda () '(2)))))))
       (cons 1 (reset))))
 
+#|
+    We are about to discuss `call/cc`. It is a procedure of one argument, called a `receiver`:
+    `receiver` is a procedure of one argument, called a `continuation`. The `continuation`
+    argument is also a procedure of one argument, defined as follows:
+    let `e` be the expression containing
+    subexpr `(call/cc receiver)`, then `(call/cc receiver)` yields `(receiver continuation)`,
+    where `continuation` is bound to procedure `(escaper c)`, where `c` is the context of 
+    `(call/cc receiver)` in expression `e`.
+|#
+
+    ; manually building contexts and their escaping procedures.
     (tester 27 
      (let ((receiver (lambda (continuation) 6))
            (context (lambda (▢ ) (+ 3 (* 4 ▢ )))))
@@ -83,6 +174,18 @@
            (context (lambda (▢ ) (+ 3 (* 4 ▢ )))))
       (+ 3 (* 4 (receiver (escaper context))))))
 
+    ; contexts and their escaping procedures are provided by `call/cc` directly.
+    (tester 27 
+     (let ((receiver (lambda (continuation) 6)))
+      (+ 3 (* 4 (call/cc receiver)))))
+
+    (tester 27
+     (let ((receiver (lambda (continuation) (continuation 6))))
+      (+ 3 (* 4 (call/cc receiver)))))
+
+    (tester 27
+     (let ((receiver (lambda (continuation) (+ 2 (continuation 6)))))
+      (+ 3 (* 4 (call/cc receiver)))))
 
     ; 16.9.1
     (tester -22

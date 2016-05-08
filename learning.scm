@@ -1,4 +1,6 @@
 
+(load "introduction-to-continuations.so")
+
 (let* ((str-port (open-output-string)) 
        (result (with-output-to-port str-port 
                 (lambda () 
@@ -18,3 +20,4 @@
 
 ; the waiting + is abandoned
 (+ (escape-* 5 2) 3)
+
