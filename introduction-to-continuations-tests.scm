@@ -169,12 +169,23 @@
            (context (lambda (▢ ) (+ 3 (* 4 ▢ )))))
       (+ 3 (* 4 (receiver (escaper context))))))
 
+    ; the following form is different from the previous two in the expression
+    ; `(+ 2 (continuation 6))` in the definition of the `receiver` function.
+    ; The dispatching mechanism is the same, the only difference is in *how
+    ; the `receiver` uses the given `continuation`. Here a subtle but important
+    ; observation has to be stated: observe that `receiver` escapes the
+    ; context `(λ (▢ ) (+ 2 ▢ ))` -- namely the one that starts when function 
+    ; `receiver` is applied -- not the context denoted by `context` bind, which
+    ; is the context we *actually* escape toward to.
     (tester 27
      (let ((receiver (lambda (continuation) (+ 2 (continuation 6))))
            (context (lambda (▢ ) (+ 3 (* 4 ▢ )))))
       (+ 3 (* 4 (receiver (escaper context))))))
 
     ; contexts and their escaping procedures are provided by `call/cc` directly.
+    ; In the following, the system forms the context of `(call/cc receiver)`; next,
+    ; the system passes it as an *escape procedure* to `receiver`. Since it is now just 
+    ; a simple invocation, *all the rules for procedure invocation apply*.
     (tester 27 
      (let ((receiver (lambda (continuation) 6)))
       (+ 3 (* 4 (call/cc receiver)))))
@@ -230,6 +241,11 @@
            (receiver (lambda (continuation) (+ 1000 (continuation 5)))))
       (- 3 (* 5 (call/cc receiver)))))
 
+    ; Observe that if `receiver` is defined as `(λ (continuation) (continuation body))`,
+    ; for some `body` expression, then `receiver` can be rewritten as `(λ (continuation) body)`,
+    ; because the context that `receiver` would escape invoking `continuation` is `(λ (▢ ) ▢ )`, 
+    ; namely the identity function, so no expression is pending on the result of `(continuation body)`.
+
     ; preparing for experiments
     (define result "any value")
     (define result/cc "any value")
@@ -247,7 +263,7 @@
      (lambda (proc)
       (proc (list (proc (list 3 proc))))))
 
-    ; callers
+    ; helpers
     (define display/return 
      (lambda (x)
       (display x)
@@ -290,8 +306,32 @@
     (tester "(1000)" ((caddr result/cc) (list 1000)))
     (tester `(answer-is 1000) result/cc)
 
+    ; 16.1.14
+    (tester "actual in {72, 8072}, with uniform probability"
+     (let ((receiver (lambda (continuation)
+                      (if (zero? (random 2))
+                       (+ 1000 6)
+                       (continuation 6)))))
+      (* (+ (call/cc receiver) 3) 8)))
 
+    (tester "actual in {144, 8144, 16144}, with probabilities 1/4, 1/2, 1/4, respectively"
+     (let ((receiver (lambda (continuation)
+                      (if (zero? (random 2))
+                       (+ 1000 6)
+                       (continuation 6)))))
+      (+ 
+       (* (+ (call/cc receiver) 3) 8)
+       (* (+ (call/cc receiver) 3) 8))))
 
+    (tester "actual in {144}, with probabilities 1/4, 1/2, 1/4, respectively"
+     (let ((receiver (lambda (continuation)
+                      (continuation ; useless, see comments above
+                       (if (zero? (continuation (random 2)))
+                        (+ 1000 6)
+                        6)))))
+      (+ 
+       (* (+ (call/cc receiver) 3) 8)
+       (* (+ (call/cc receiver) 3) 8))))
 
 
 
