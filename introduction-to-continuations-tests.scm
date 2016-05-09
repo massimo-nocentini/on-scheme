@@ -323,7 +323,7 @@
        (* (+ (call/cc receiver) 3) 8)
        (* (+ (call/cc receiver) 3) 8))))
 
-    (tester "actual in {144}, with probabilities 1/4, 1/2, 1/4, respectively"
+    (tester "actual in {48, 56, 64}, with probabilities 1/4, 1/2, 1/4, respectively"
      (let ((receiver (lambda (continuation)
                       (continuation ; useless, see comments above
                        (if (zero? (continuation (random 2)))
