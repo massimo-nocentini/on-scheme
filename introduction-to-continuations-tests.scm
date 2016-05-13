@@ -306,7 +306,26 @@
     (tester "(1000)" ((caddr result/cc) (list 1000)))
     (tester `(answer-is 1000) result/cc)
 
-    ; 16.1.14
+    ; fourth experiment (namely, as requested by exercise 16.15)
+    (tester 
+     "(3 #<procedure (display/return x)>)((3 #<procedure (display/return x)>))((3 #<procedure (display/return x)>))" 'done
+     (begin 
+      (set! result (answer-maker (call receiver-3)))
+      'done))
+    (tester `(answer-is (3 ,display/return)) result)
+    (tester "(1000)" '(1000) ((cadr (cadr result)) (list 1000)))
+    (tester `(answer-is (3 ,display/return)) result)
+
+    (tester 
+     "(3 #<procedure (continuation . results1901)>)" 'done
+     (begin
+      (set! result/cc (answer-maker (call/cc receiver-3)))
+      'done))
+    (tester `(answer-is 3 ,(caddr result/cc)) result/cc)
+    (tester "(1000)" 'done ((caddr result/cc) (list 1000)))
+    (tester `(answer-is 1000) result/cc)
+
+    ; 16.14
     (tester "actual in {72, 8072}, with uniform probability"
      (let ((receiver (lambda (continuation)
                       (if (zero? (random 2))
@@ -332,6 +351,81 @@
       (+ 
        (* (+ (call/cc receiver) 3) 8)
        (* (+ (call/cc receiver) 3) 8))))
+
+    ; 16.16
+    (define *deep* "any continuation")
+
+    (define map-sub1
+     (lambda (ls)
+      (if (null? ls)
+       (call/cc (lambda (continuation) 
+                 (set! *deep* continuation)
+                 '()))
+       (cons (sub1 (car ls)) (map-sub1 (cdr ls))))))
+
+    (tester '(1000) (cons 1000 (map-sub1 '())))
+    (tester '(1000 a b c) (cons 2000 (*deep* '(a b c))))
+    (tester '(1000 -1) (cons 1000 (map-sub1 '(0))))
+    (tester '(1000 -1 a b c) (cons 2000 (*deep* '(a b c))))
+    (tester '(1000 0 -1) (cons 1000 (map-sub1 '(1 0))))
+    (tester '(1000 0 -1 a b c) (cons 2000 (*deep* '(a b c))))
+    (tester '(1000 4 3 2 1 0 -1) (cons 1000 (map-sub1 '(5 4 3 2 1 0))))
+    (tester '(1000 4 3 2 1 0 -1 a b c) (cons 2000 (*deep* '(a b c))))
+
+    (tester 7 (*escaper/thunk* (lambda () (add1 6))))
+    (tester 7 (+ 5 (*escaper/thunk* (lambda () (add1 6)))))
+
+    (tester '(a b d)
+     (let ((receiver (escaper
+                      (lambda (proc)
+                       (cons 'c (proc (list 'd)))))))
+      (cons 'a (cons 'b (call/cc receiver)))))
+
+    (tester '(c d)
+     (let ((receiver (escaper
+                      (lambda (proc)
+                       '(c d)))))
+      (cons 'a (cons 'b (call/cc receiver)))))
+
+    (make-new-escaper)
+
+    (tester '(c d)
+     (let ((receiver (new-escaper
+                      (lambda (proc)
+                       '(c d)))))
+      (cons 'a (cons 'b (call/cc receiver)))))
+
+    #;(tester '(c d)
+     (let ((escaper (make-another-escaper))
+           (receiver (escaper
+                      (lambda (proc)
+                       '(c d)))))
+      (cons 'a (cons 'b (call/cc receiver)))))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -8,7 +8,7 @@
       (lambda args 
        (*escaper/thunk* (lambda () (apply proc args))))))
 
-    (define set-escaper
+   (define set-escaper
      (lambda (continuation)
       (set! *escaper/thunk* continuation)
       (*escaper/thunk* (lambda () (display `(escaper defined as ,*escaper/thunk* ))))))
@@ -17,7 +17,29 @@
      (lambda ()
       (apply (call/cc set-escaper) '())))
 
-    ; add one or more expected expressions
+    (define new-escaper "any procedure")
+
+    (define make-new-escaper 
+     (lambda ()
+      (let ((receiver (lambda (continuation)
+                       (set! new-escaper (lambda (proc)
+                                          (lambda args
+                                           (continuation (lambda () (apply proc args))))))
+                       (lambda () (display "`new-escaper` is defined")))))
+       (apply (call/cc receiver) '()))))
+
+    #;(define make-another-escaper 
+     (lambda ()
+      (let ((escaper "any procedure")
+            (receiver (lambda (continuation)
+                       (set! escaper (lambda (proc)
+                                      (lambda args
+                                       (continuation (lambda () (apply proc args))))))
+                       (lambda () 
+                        (display "hello") 
+                        escaper))))
+       (apply (call/cc receiver) '()))))
+
     (define-syntax tester
      (syntax-rules ()
       ((_ expected ... sexp) 
