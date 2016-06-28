@@ -21,3 +21,9 @@
 ; the waiting + is abandoned
 (+ (escape-* 5 2) 3)
 
+
+
+(define ((+curry x) y)
+    (+ x y))
+
+

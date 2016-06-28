@@ -403,8 +403,61 @@
       (cons 'a (cons 'b (call/cc receiver)))))
 
 
+    (define countdown
+     (lambda (n attempt)
+      (format #t "~%This string will appear only once~%")
+      (let* ((message (lambda (direction value)
+                       (format #t "\t~Aing `attempt` function with value ~A~%" direction value)
+                       value))
+             (pair (message 'exit (attempt (message 'enter n))))
+             (v (car pair))
+             (returner (cadr pair)))
+       (format #t "\tnon-negative number: ~A~%" v)
+       (if (positive? v)
+        (returner (list (sub1 v) returner))
+        (format #t "Blastoff")))))
+
+    (tester "
+This string will appear only once
+        entering `attempt` function with value 3
+        exiting `attempt` function with value (3 #<procedure (? x)>)
+        non-negative number: 3
+(2 #<procedure (? x)>)"
+     (let ((attempt (lambda (n)
+                     (let ((receiver (lambda (proc) (list n proc))))
+                      (receiver (lambda (x) x))))))
+      (countdown 3 attempt)))
+
+    (tester "
+This string will appear only once
+        entering `attempt` function with value 3
+        exiting `attempt` function with value (3 #<procedure (continuation . results1901)>)
+        non-negative number: 3
+        exiting `attempt` function with value (2 #<procedure (continuation . results1901)>)
+        non-negative number: 2
+        exiting `attempt` function with value (1 #<procedure (continuation . results1901)>)
+        non-negative number: 1
+        exiting `attempt` function with value (0 #<procedure (continuation . results1901)>)
+        non-negative number: 0
+Blastoff"
+     (let ((attempt (lambda (n)
+                     (let ((receiver (lambda (proc) (list n proc))))
+                      (call/cc receiver)))))
+      (countdown 3 attempt)))
 
 
+    (tester "begin" "begin" "middle" "begin" "end"
+     (let ((receiver
+            (lambda (continuation)
+             (continuation continuation))) ; equivalent to just returning `continuation`
+           (three-phases
+            (lambda (continuation)
+             (display 'begin)
+             (call/cc continuation)
+             (display 'middle)
+             (call/cc continuation)
+             (display 'end))))
+      (three-phases (call/cc receiver))))
 
 
 
