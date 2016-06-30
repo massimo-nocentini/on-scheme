@@ -1,5 +1,5 @@
 
-;; before attempting Kozen stuff, we start small with "The Little Schemeer".
+;; before attempting Kozen stuff, we start small with "The Little Schemer".
 
     (define multi-insert*&co
      (lambda (new old_l old_r sexp coll)
@@ -27,34 +27,6 @@
                                         (+ L_car L_cdr) 
                                         (+ R_car R_cdr)))))))))))
          
-    (define-syntax letcc
-     (syntax-rules ()
-      ((letcc label sexp ...) (call/cc (lambda (label) sexp ...)))))
-
-    (define-syntax try
-     (syntax-rules (else)
-      ((try ((skip alpha) 
-             (else beta)))
-       (letcc success
-        (letcc skip (success alpha))
-        beta))))
-
-(try ((rember-from-car (cons (rm a (car l) rember-from-car) (cdr l)))
-      (else (cons (car l) (rm a (cdr l) oh)))))
-
-    (define-syntax try
-     (syntax-rules (else ->)
-      ((try ((var cloj) alpha)
-             (else beta))
-       (letcc success
-        (letcc skip 
-         (let ((var (cloj skip)))
-          (success alpha)))
-        beta))))
-
-(try 
- ((new-car (rm a (car l))) (cons new-car (cdr l)))
- (else (cons (car l) (rm a (cdr l) oh))))
 
 ;; the following definitions resembles this article of prof. Kozen:
 ;; http://www.cs.cornell.edu/courses/cs3110/2011sp/recitations/rec26-cps/cps.htm

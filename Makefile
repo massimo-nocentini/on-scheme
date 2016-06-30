@@ -1,6 +1,7 @@
 
 run-continuations-tests: continuations
-	csi introduction-to-continuations.scm < introduction-to-continuations-tests.scm
+	csi utils.scm continuations.scm < introduction-to-continuations-tests.scm
 
 continuations:
-	csc -dynamic introduction-to-continuations.scm
+	csc -dynamic -unit continuations continuations.scm
+	#csc -c continuations.scm
