@@ -9,3 +9,9 @@ continuations: # both object code and dynamic library
 seasoned-schemer-tests: #continuations
 	csc seasoned-schemer-tests.scm
 	./seasoned-schemer-tests
+
+collatz:
+	csc collatz.scm -o collatz-tests
+	./collatz-tests
+
+all-tests: collatz seasoned-schemer-tests
