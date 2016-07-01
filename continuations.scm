@@ -1,12 +1,13 @@
 
-;    (declare (unit continuations))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; The following content has been inspired by "The Seasoned Schemer" book.
 
     (module continuations *
 
-     (import scheme)
+     (import scheme chicken)
+
+     (define eternity (lambda args (apply eternity args)))
 
      (define-syntax letcc
       (syntax-rules ()
@@ -20,7 +21,6 @@
         (letcc success
          (letcc skip (success alpha)) ...
          beta))))
-
 
      (define-syntax try-cps
       (syntax-rules (else in =>)

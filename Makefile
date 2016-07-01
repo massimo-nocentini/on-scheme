@@ -3,10 +3,12 @@ run-continuations-tests: continuations
 	csi utils.scm continuations.scm < introduction-to-continuations-tests.scm
 
 continuations: # both object code and dynamic library
-	csc -dynamic continuations.scm
-	#csc -c continuations.scm
+	# the following commands comes from here: http://wiki.call-cc.org/man/4/Modules#examples-of-using-modules
+	csc -dynamic continuations.scm -j continuations # `continuations.so` will contain *procedural abstractions* as a library 
+	csc -dynamic continuations.import.scm # `continuations.import.so` will contain *syntactic abstractions* as an import library, independently.
+	# in this manner, eval `(use continuations)` will load both procedural and syntactic abstractions
 
-seasoned-schemer-tests: #continuations
+seasoned-schemer-tests: continuations
 	csc seasoned-schemer-tests.scm
 	./seasoned-schemer-tests
 

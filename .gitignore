@@ -4,3 +4,4 @@
 *.c
 *-tests
 *.swp
+*.import.scm

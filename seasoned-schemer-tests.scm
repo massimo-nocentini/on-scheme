@@ -1,53 +1,48 @@
 
-(include "continuations.scm") ; inclusion is necessary to have macros at compile-time
 
-(import continuations) ; where our "continuations stuff" lie
-
-(require-extension test)
-
+(use continuations test) 
 
     (test-group "LETCC syntactic abstraction"
-
+     ; simple forms with `letcc`
      (test 1 (letcc hop 1))
      (test 1 (letcc hop (hop 1)))
      (test 1 (letcc hop (add1 (hop 1))))
      (test 3 (+ 2 (letcc hop (add1 (hop 1))))))
 
-
     (test-group "TRY syntactic abstraction"
 
-     (let ((id-dont-skip-applicative (lambda (x skip) x))
-           (id-do-skip-applicative (lambda (x skip) (skip 'discard))) 
-           (id-dont-skip-cps (lambda (x) (lambda (skip) x)))
-           (id-do-skip-cps (lambda (x) (lambda (skip) (skip 'discard)))))
+     (let ((identity-applicative&return (lambda (x skip) x))
+           (identity-applicative&skip (lambda (x skip) (skip 'discard))) 
+           (identity-cps&return (lambda (x) (lambda (skip) x)))
+           (identity-cps&skip (lambda (x) (lambda (skip) (skip 'discard)))))
 
       (test 1 (try-applicative 
-               ((skip (id-dont-skip-applicative 1 skip))
-                (else 2))))
+               ((skip (identity-applicative&return 1 skip))
+                (else (eternity)))))
 
       (test 2 (try-applicative 
-               ((skip (id-do-skip-applicative 1 skip))
+               ((skip (identity-applicative&skip 1 skip))
                 (else 2))))
 
       (test 1 (try-cps 
-               ((id-dont-skip-cps 1) => identity)
-               (else 2)))
+               ((identity-cps&return 1) => identity)
+               (else (eternity))))
 
       (test 2 (try-cps 
-               ((id-do-skip-cps 1) => identity)
+               ((identity-cps&skip 1) => eternity)
                (else 2)))
 
     (test 11 (letcc cont (+ 10 (try-cps 
-                                ((id-dont-skip-cps 1) => identity)
-                                (else cont in (lambda (k) 2) => identity)))))
+                                ((identity-cps&return 1) => identity)
+                                (else cont in (lambda (k) 2) => eternity)))))
 
     (test 12 (letcc cont (+ 10 (try-cps 
-                                ((id-do-skip-cps 1) => identity)
+                                ((identity-cps&skip 1) => eternity)
                                 (else cont in (lambda (k) 2) => identity)))))
 
     (test 2 (letcc cont (+ 10 (try-cps 
-                               ((id-do-skip-cps 1) => identity)
-                               (else cont in (lambda (k) (k 2)) => identity)))))
+                               ((identity-cps&skip 1) => eternity)
+                               (else cont in (lambda (k) (k 2)) => eternity)))))
 
     )) ; end of "TRY" tests group
 
