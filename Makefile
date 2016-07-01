@@ -1,5 +1,5 @@
 
-run-continuations-tests: continuations
+run-intro-continuations-tests:
 	csi utils.scm continuations.scm < introduction-to-continuations-tests.scm
 
 continuations: # both object code and dynamic library
@@ -8,12 +8,12 @@ continuations: # both object code and dynamic library
 	csc -dynamic continuations.import.scm # `continuations.import.so` will contain *syntactic abstractions* as an import library, independently.
 	# in this manner, eval `(use continuations)` will load both procedural and syntactic abstractions
 
-seasoned-schemer-tests: continuations
-	csc seasoned-schemer-tests.scm
-	./seasoned-schemer-tests
+run-continuations-tests: continuations
+	csc continuations-tests.scm
+	./continuations-tests
 
-collatz:
+run-collatz-tests:
 	csc collatz.scm -o collatz-tests
 	./collatz-tests
 
-all-tests: collatz seasoned-schemer-tests
+run-all-tests: run-collatz-tests run-continuations-tests
