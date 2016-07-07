@@ -23,4 +23,4 @@ run-seasoned-schemer-tests: continuations
 	csc seasoned-schemer-tests.scm -o seasoned-schemer-tests
 	./seasoned-schemer-tests
 
-run-all-tests: run-collatz-tests run-continuations-tests
+run-all-tests: run-collatz-tests run-continuations-tests run-seasoned-schemer-tests

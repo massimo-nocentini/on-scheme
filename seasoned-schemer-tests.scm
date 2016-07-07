@@ -28,5 +28,48 @@
      (test "discard recursion stack hopping with letcc, two equal peers in a row" #t (two-in-a-row?&hop '(j f r e k s s)))
     )
 
+    (test-group "intersect+all"
+
+     (test-group "intersect" ; first tests `intersect` which is a little dependency
+      (test "intersect a set with an empty set" '() (intersect '(1 2 3) '()))
+      (test "intersect two non-empty sets" '(2 3) (intersect '(1 2 3) '(2 3 4)))) 
+
+     (test "non empty intersection" '(3) (intersect+all 
+                                          '((3 mango and) (3 kiwis and) (3 hamburgers))))
+
+     (test "empty intersection, empty set present" '() (intersect+all '((3 steaks and) 
+                                                                        (no food and) 
+                                                                        ()
+                                                                        (3 diet hamburgers))))
+
+     (test "empty intersection, empty set present in last position" 
+      '() (intersect+all '((3 steaks and) (no food and) (3 diet hamburgers) ())))
+
+     (test "empty intersection" '() (intersect+all '((3 steaks and) 
+                                                     (no food and) 
+                                                     (three baked potatoes)
+                                                     (3 diet hamburgers))))
+    )
+
+
+    (test-group "comb-upto-last"
+
+      (test "rember-upto-last, three atom occurrences" 
+       '(e f) (comb-upto-last 'a -1 '(a b a d a e f)))
+      (test "rember-upto-last, no atom occurrences" 
+       '(a b c d a e f) (comb-upto-last 'r -1 '(a b c d a e f)))
+      (test "rember-upto-last, empty prefix when atom is in `car` position" 
+       '() (comb-upto-last 'a 1 '(a b c d a e f a g h)))
+      (test "rember-upto-last, sublist between the start and first atom occurences" 
+       '(b c d) (comb-upto-last 'a 1 '(b c d a e f a g h)))
+      (test "rember-upto-last, sublist between first and second atom occurrences" 
+       '(e f) (comb-upto-last 'a 2 '(b c d a e f a g h)))
+      (test "rember-upto-last, suffix as done by `rember-upto-last`" 
+       '(g h) (comb-upto-last 'a 3 '(b c d a e f a g h)))
+      (test "rember-upto-last, suffix as done by `rember-upto-last`, again" 
+       '(g h) (comb-upto-last 'a 50 '(b c d a e f a g h)))
+
+
+    )
 
 (test-exit)

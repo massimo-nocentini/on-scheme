@@ -3,8 +3,8 @@
 
 (module seasoned-schemer *
 
- (import scheme chicken data-structures)
- (use continuations)
+ (import scheme chicken)
+ (use continuations matchable data-structures)
 
  (define multi-insert*&co
   (lambda (new old_l old_r sexp coll)
@@ -58,4 +58,69 @@
            (else (T (car rest) (cdr rest))))))))))
 
 
+    (define intersect-old
+     (lambda (this that)
+      (letrec ((I (lambda (set)
+                   (cond
+                    ((null? set) (quote ()))
+                    ((member (car set) that) (cons (car set) (I (cdr set))))
+                    (else (I (cdr set)))))))
+       (I this))))
+
+    (define intersect
+     (lambda (this that)
+      (letrec ((I (match-lambda 
+                   (() '())
+                   ((i . is) (if (member i that) (cons i (I is)) (I is))))))
+       (I this))))
+
+    (define intersect+all
+     (lambda (sets)
+      (letcc hop
+       (letrec ((intersect  ; 13th C.: "we can do whatever we want with the minor
+                            ; version of `intersect`, nobody cares because it is protected".
+                 (lambda (this that)
+                  (letrec ((I (match-lambda 
+                               (() '())
+                               ((i . is) (if (member i that) (cons i (I is)) (I is))))))
+                   (cond 
+                    ((null? that) (hop (quote ()))) ; 14th C.: spot it in the middle of recursion,
+                                                    ; use `hop` to return '() without further delay.
+                    (else (I this))))))
+                (A (match-lambda
+                    ((() ...) (hop (quote ()))) ; 14th C.: "this is it: the result is '()
+                                                ; and that's all there is to it",
+                                                ; spot it while reading the input.
+                    ((set) set)
+                    ((this . rest) (intersect this (A rest))))))
+        (cond
+         ((null? sets) (quote '()))
+         (else (A sets)))))))
+
+    (define comb-upto-last
+     (lambda (atom k lat)
+      (reverse (letcc skip ; "skip" because we discard many skipping in favor of the last one.
+                (letrec ((R (lambda (prefix k lat)
+                             (match lat
+                              (() prefix)
+                              ((a . as) 
+                               (cond
+                                ((equal? atom a)
+                                 (cond
+                                  ((zero? k) prefix) 
+                                  (else (skip (R (quote ()) (sub1 k) as)))))
+                                (else (R (cons a prefix) k as))))))))
+                 (R (quote ()) (sub1 k) lat))))))
+
     ) ; end of module `seasoned-schemer`
+
+
+
+
+
+
+
+
+
+
+
