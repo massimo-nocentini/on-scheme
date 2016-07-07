@@ -102,7 +102,20 @@
       (reverse (letcc skip ; "skip" because we discard many skipping in favor of the last one.
                 (letrec ((R (lambda (prefix k lat)
                              (match lat
-                              (() prefix)
+                              (() prefix) ; to implement `rember-upto-last`, which takes an
+                                            ; atom `a` and a list `lat`, then removes all the
+                                            ; atoms from `lat` upto an including the last 
+                                            ; occurrence of `a`. If there are no `a`s, returns `lat`.
+                                            ; The new version would not stop looking at elements
+                                            ; in `lat` but would also throw away everything
+                                            ; it has seen so far, in the sense to forget some
+                                            ; computation that it had remembered somewhere.
+                                            ; Respect `intersect+all`, which knows what the result
+                                            ; is when it finds '(), this function knows which
+                                            ; pieces of the list are *not* in the result.
+                                            ; So, suppose that this function sees the atom `a`,
+                                            ; so it forget the pending computations and should it
+                                            ; restart the process of searching through the `cdr`. 
                               ((a . as) 
                                (cond
                                 ((equal? atom a)
