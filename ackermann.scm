@@ -42,47 +42,25 @@
 
     ;(let ((sexp '(A 1 2)))
             (define ackermann-expander
-             (lambda (sexp tabs)
-              (printf "~A -> " sexp)
+             (lambda (sexp tabs sender)
+              (printf "~A ~A → " sender sexp)
               (match sexp
                (('A 0 n)
                 (let ((arith `(add1 ,n)))
-                 (printf "~A, so go back to " arith)
+                 (printf "~A ⇒ " `(eval ',arith))
                  (eval arith)))
                (('A m 0)
                 (let ((forward `(A ,(sub1 m) 1)))
-                 (printf "○ ~A~N~A" forward tabs)
-                 (ackermann-expander forward tabs))) 
+                 (printf "■ ~A~N~A" forward tabs)
+                 (ackermann-expander forward tabs "■"))) 
                (('A m n)
                 (let* ((inner `(A ,m ,(sub1 n)))
-                      (expanded-inner (ackermann-expander inner (string-append " " tabs)))
+                      (expanded-inner (ackermann-expander inner (string-append " " tabs) "○"))
+                      (whole-unexpanded `(A ,(sub1 m) ,inner))
                       (whole `(A ,(sub1 m) ,expanded-inner)))
-                 (printf "● ~A~N~A" whole tabs)
-                 (ackermann-expander whole (string-append "" tabs)))))))
+                 (printf "● ~A ≡ ~A~N~A" whole-unexpanded whole tabs)
+                 (ackermann-expander whole (string-append "" tabs) "●"))))))
 
  
 
 
-
-(newline)
-(newline)
-
-    (let* ((sexp '(A (a a) (a a a)))
-           (expanded (expand sexp)))
-     (display expanded))
-
-(newline)
-
-    (let* ((sexp '(A (a a) (a a a)))
-           (expanded (expand sexp)))
-     (display sexp)
-     (display expanded)
-     (display (expand (cdr expanded))))
-
-    (define-syntax B
-     (syntax-rules ()
-      ((_ (m . ms) ()) 'ms)))
-
-    ;(B (2 3 4) ())
-    
-    ;(A (a) ((a a) (a a)))
