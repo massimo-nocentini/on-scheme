@@ -1,7 +1,7 @@
 
 ; implementation of a macro for the original Ackermann function φ.
 
-(use matchable)
+(use matchable continuations)
 
     (define-syntax phi
      (syntax-rules ()
@@ -42,25 +42,30 @@
 
     ;(let ((sexp '(A 1 2)))
             (define ackermann-expander
-             (lambda (sexp tabs sender)
-              (printf "~A ~A → " sender sexp)
-              (match sexp
-               (('A 0 n)
-                (let ((arith `(add1 ,n)))
-                 (printf "~A ⇒ " `(eval ',arith))
-                 (eval arith)))
-               (('A m 0)
-                (let ((forward `(A ,(sub1 m) 1)))
-                 (printf "■ ~A~N~A" forward tabs)
-                 (ackermann-expander forward tabs "■"))) 
-               (('A m n)
-                (let* ((inner `(A ,m ,(sub1 n)))
-                      (expanded-inner (ackermann-expander inner (string-append " " tabs) "○"))
-                      (whole-unexpanded `(A ,(sub1 m) ,inner))
-                      (whole `(A ,(sub1 m) ,expanded-inner)))
-                 (printf "● ~A ≡ ~A~N~A" whole-unexpanded whole tabs)
-                 (ackermann-expander whole (string-append "" tabs) "●"))))))
+             (lambda (starting-sexp)
+              (letcc hop
+               (let E ((sexp starting-sexp) 
+                       (tabs "") 
+                       (sender "☻"))
+                (printf "~A ~A → " sender sexp)
+                (if (and (not (equal? sexp starting-sexp)) (equal? tabs "")) (hop sexp)) 
+                (match sexp
+                 (('A 0 n)
+                  (let ((arith `(add1 ,n)))
+                   (printf "~A ⇒ " `(eval ',arith))
+                   (eval arith)))
+                 (('A m 0)
+                  (let ((forward `(A ,(sub1 m) 1)))
+                   (printf "■ ~A~N~A" forward tabs)
+                   (E forward tabs "■"))) 
+                 (('A m n)
+                  (let* ((inner `(A ,m ,(sub1 n)))
+                         (expanded-inner (E inner (string-append " " tabs) "○"))
+                         (whole-unexpanded `(A ,(sub1 m) ,inner))
+                         (whole `(A ,(sub1 m) ,expanded-inner)))
+                   (printf "● ~A ≡ ~A~N~A" whole-unexpanded whole tabs)
+                   (E whole (string-append "" tabs) "●"))))))))
 
- 
+
 
 
