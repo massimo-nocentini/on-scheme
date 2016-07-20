@@ -40,32 +40,56 @@
 (newline)
 (newline)
 
-    ;(let ((sexp '(A 1 2)))
-            (define ackermann-expander
-             (lambda (starting-sexp)
-              (letcc hop
-               (let E ((sexp starting-sexp) 
-                       (tabs "") 
-                       (sender "☻"))
-                (printf "~A ~A → " sender sexp)
-                (if (and (not (equal? sexp starting-sexp)) (equal? tabs "")) (hop sexp)) 
-                (match sexp
+    (define-syntax tabling
+     (syntax-rules (before ref store else)
+      ((tabling <table> (before <command>) ... (ref <key>)) 
+       (let ((memo (hash-table-ref <table> <key>)))
+        <command> ...
+        memo)) 
+      ((tabling <table> (before <command>) ... (ref <key>) (else <comp>))
+       (begin 
+        <command> ... 
+        (if (hash-table-exists? <table> <key>) 
+         (hash-table-ref <table> <key>) 
+         (tabling <table> (store <comp> at <key>)))))
+      ((tabling <table> (before <command>) ... (store <val> at <key>)) 
+       (begin
+        <command> ...
+        (hash-table-set! <table> <key> <val>)
+        <val>))))
+
+    (define ackermann-expander
+     (lambda (starting-sexp)
+      (let ((table (make-hash-table)))
+       (letcc hop
+        (let E ((sexp starting-sexp) 
+                (tabs "") 
+                (sender "☻"))
+         (printf "~A ~A → " sender sexp)
+         (cond
+          ((and (not (equal? sexp starting-sexp)) (equal? tabs "")) (hop sexp)) 
+          ((hash-table-exists? table sexp) (tabling table (before (printf "★ ")) (ref sexp)))
+          (else (match sexp
                  (('A 0 n)
-                  (let ((arith `(add1 ,n)))
-                   (printf "~A ⇒ " `(eval ',arith))
-                   (eval arith)))
+                  (let* ((arith `(add1 ,n)))
+                   (tabling table 
+                    (before (printf "~A ⇒ " `(eval ',arith))) 
+                    (ref sexp)
+                    (else (eval arith)))))
                  (('A m 0)
                   (let ((forward `(A ,(sub1 m) 1)))
-                   (printf "■ ~A~N~A" forward tabs)
-                   (E forward tabs "■"))) 
+                   (tabling table 
+                    (before (printf "■ ~A~N~A" forward tabs)) 
+                    (ref forward) 
+                    (else (E forward tabs "■")))))
                  (('A m n)
                   (let* ((inner `(A ,m ,(sub1 n)))
-                         (expanded-inner (E inner (string-append " " tabs) "○"))
+                         (expanded-inner (tabling table (ref inner) (else (E inner (string-append " " tabs) "○"))))
                          (whole-unexpanded `(A ,(sub1 m) ,inner))
                          (whole `(A ,(sub1 m) ,expanded-inner)))
-                   (printf "● ~A ≡ ~A~N~A" whole-unexpanded whole tabs)
-                   (E whole (string-append "" tabs) "●"))))))))
-
-
+                   (tabling table 
+                    (before (printf "● ~A ≡ ~A~N~A" whole-unexpanded whole tabs)) 
+                    (ref whole) 
+                    (else (E whole (string-append "" tabs) "●")))))))))))))
 
 
