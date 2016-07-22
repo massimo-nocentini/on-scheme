@@ -58,6 +58,8 @@
         (hash-table-set! <table> <key> <val>)
         <val>))))
 
+    (define restart "any-function")
+
     (define ackermann-expander
      (lambda (starting-sexp)
       (let ((table (make-hash-table)))
@@ -67,7 +69,13 @@
                 (sender "☻"))
          (printf "~A ~A → " sender sexp)
          (cond
-          ((and (not (equal? sexp starting-sexp)) (equal? tabs "")) (hop sexp)) 
+          ((and (not (equal? sexp starting-sexp)) (equal? tabs "")) 
+           (call/cc (lambda (cont)
+                     (set! restart (lambda (injected-sexp)
+                                    (set! sexp (if (atom? injected-sexp) sexp injected-sexp))
+                                    (set! starting-sexp sexp)
+                                    (cont (E sexp "" "☺")))) 
+                     (hop sexp))))
           ((hash-table-exists? table sexp) (tabling table (before (printf "★ ")) (ref sexp)))
           (else (match sexp
                  (('A 0 n)
