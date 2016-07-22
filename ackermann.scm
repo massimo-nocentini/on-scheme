@@ -102,4 +102,11 @@
                     (ref whole) 
                     (else (E starting-sexp whole (string-append "" tabs) "●")))))))))))))
 
-
+; in order to see Ackermann reductions type the following in the REPL:
+; >  (ackermann-expander '(A 3 6))
+; if you want timing info too:
+; > (time (ackermann-expander '(A 3 6)))
+; finally, to restart the natural unwind of recursion stack then type:
+; > (restart 'any-atom-should-work)
+; moreover, if you want to restart the computation with a different Ackermann form <A-form> then:
+; > (restart <A-form>) ; where <A-form> = '(A n m) for some integers n and m
