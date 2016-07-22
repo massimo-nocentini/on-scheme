@@ -58,7 +58,7 @@
         (hash-table-set! <table> <key> <val>)
         <val>))))
 
-    (define restart "any-function")
+    (define restart (lambda () 'no-computation-to-restart))
 
     (define ackermann-expander
      (lambda (starting-sexp)
