@@ -64,7 +64,8 @@
      (lambda (starting-sexp)
       (let ((table (make-hash-table)))
        (letcc hop
-        (let E ((sexp starting-sexp) 
+        (let E ((starting-sexp starting-sexp)
+                (sexp starting-sexp) 
                 (tabs "") 
                 (sender "☻"))
          (printf "~A ~A → " sender sexp)
@@ -72,9 +73,8 @@
           ((and (not (equal? sexp starting-sexp)) (equal? tabs "")) 
            (call/cc (lambda (cont)
                      (set! restart (lambda (injected-sexp)
-                                    (set! sexp (if (atom? injected-sexp) sexp injected-sexp))
-                                    (set! starting-sexp sexp)
-                                    (cont (E sexp "" "☺")))) 
+                                    (let ((restarting-sexp (if (atom? injected-sexp) sexp injected-sexp)))
+                                     (cont (E restarting-sexp restarting-sexp "" "☺")))))
                      (hop sexp))))
           ((hash-table-exists? table sexp) (tabling table (before (printf "★ ")) (ref sexp)))
           (else (match sexp
@@ -89,15 +89,17 @@
                    (tabling table 
                     (before (printf "■ ~A~N~A" forward tabs)) 
                     (ref forward) 
-                    (else (E forward tabs "■")))))
+                    (else (E starting-sexp forward tabs "■")))))
                  (('A m n)
                   (let* ((inner `(A ,m ,(sub1 n)))
-                         (expanded-inner (tabling table (ref inner) (else (E inner (string-append " " tabs) "○"))))
+                         (expanded-inner (tabling table 
+                                          (ref inner) 
+                                          (else (E starting-sexp inner (string-append " " tabs) "○"))))
                          (whole-unexpanded `(A ,(sub1 m) ,inner))
                          (whole `(A ,(sub1 m) ,expanded-inner)))
                    (tabling table 
                     (before (printf "● ~A ≡ ~A~N~A" whole-unexpanded whole tabs)) 
                     (ref whole) 
-                    (else (E whole (string-append "" tabs) "●")))))))))))))
+                    (else (E starting-sexp whole (string-append "" tabs) "●")))))))))))))
 
 
