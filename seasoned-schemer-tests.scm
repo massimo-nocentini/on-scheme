@@ -72,4 +72,32 @@
 
     )
 
+    (test-group "leftmost"
+
+     (let ((leftmost leftmost/escape))
+      (test "leftmost, there is at least one atom" 
+       'a (leftmost '(((a)) b (c))))
+
+      (test "leftmost, no atom in the very first car sexp" 
+       'b (leftmost '((() ((() (())))) b (c))))
+
+      (let ((sexp (quote ((() ((() (())))) (((() ()))) ()))))
+       (test "leftmost, no atom at all" 
+        sexp (leftmost sexp)))
+     )
+    )
+
+    (test-group "rember1*"
+
+    (let ((R rember1*/try))
+
+      (test "rember1*, atom present" 
+       '((food) (food))(R 'more '((food) more (food))))
+
+      (test "rember1*, atom not present" 
+       '((food) more (food)) (R 'a '((food) more (food))))
+
+     )
+    )
+
 (test-exit)

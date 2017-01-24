@@ -69,32 +69,41 @@
 
     (define intersect
      (lambda (this that)
-      (letrec ((I (match-lambda 
-                   (() '())
-                   ((i . is) (if (member i that) (cons i (I is)) (I is))))))
+      (letrec ((I (lambda (l)
+                   (dbind/car+cdr l 
+                    ((i  is) (cond 
+                              ((member i that) (cons i (I is))) 
+                              (else (I is))))
+                    (else '())))))
        (I this))))
 
     (define intersect+all
      (lambda (sets)
       (letcc hop
-       (letrec ((intersect  ; 13th C.: "we can do whatever we want with the minor
-                            ; version of `intersect`, nobody cares because it is protected".
-                 (lambda (this that)
-                  (letrec ((I (match-lambda 
-                               (() '())
-                               ((i . is) (if (member i that) (cons i (I is)) (I is))))))
-                   (cond 
-                    ((null? that) (hop (quote ()))) ; 14th C.: spot it in the middle of recursion,
-                                                    ; use `hop` to return '() without further delay.
-                    (else (I this))))))
-                (A (match-lambda
-                    ((() ...) (hop (quote ()))) ; 14th C.: "this is it: the result is '()
-                                                ; and that's all there is to it",
-                                                ; spot it while reading the input.
-                    ((set) set)
-                    ((this . rest) (intersect this (A rest))))))
+       (letrec (
+                ; 13th C.: "we can do whatever we want with the minor
+                ; version of `intersect`, nobody cares because it is protected".
+                (intersect (lambda (this that)
+                            (cond 
+                             ((null? that) (hop (quote ())))    ; 14th C.: spot it in the middle of recursion,     
+                                                                ; use `hop` to return '() without further delay.
+                             (else 
+                              (letrec ((I (match-lambda 
+                                           (() '())
+                                           ((i . is) 
+                                            (if (member i that) 
+                                             (cons i (I is)) 
+                                             (I is))))))
+                               (I this))))))
+                (A (lambda (sets)
+                    (match sets
+                     ((() ...) (hop (quote ()))) ; 14th C.: "this is it: the result is '()
+                     ; and that's all there is to it",
+                     ; spot it while reading the input.
+                     ((set) set)
+                     ((this . rest) (intersect this (A rest)))))))
         (cond
-         ((null? sets) (quote '()))
+         ((null? sets) (quote ()))
          (else (A sets)))))))
 
     (define comb-upto-last
@@ -125,15 +134,109 @@
                                 (else (R (cons a prefix) k as))))))))
                  (R (quote ()) (sub1 k) lat))))))
 
+    ; LEFTMOST {{{
+
+    (define leftmost/awkward
+     (lambda (l)
+      (letrec ((L (lambda (ll)
+                   (dbind/car+cdr ll 
+                    ((first rest)
+                     (cond 
+                      ((symbol? first) first)
+                      (else (let ((a (L first))) 
+                             (cond
+                              ((symbol? a) a)
+                              (else (L rest)))))))
+                    (else (quote ()))))))
+       (let ((atom (L l)))
+        (cond
+         ((symbol? atom) atom)
+         (else l))))))
+
+    (define leftmost/awkward+letcc
+     (lambda (l)
+      (letrec ((L (lambda (ll hop)
+                   (dbind/car+cdr ll 
+                    ((first rest)
+                     (cond 
+                      ((symbol? first) (hop first))
+                      (else (let ((a (L first hop))) 
+                             (cond
+                              ((symbol? a) a)
+                              (else (L rest hop)))))))
+                    (else (quote ()))))))
+       (let ((atom (letcc hop (L l hop))))
+        (cond
+         ((symbol? atom) atom)
+         (else l))))))
+
+    (define leftmost/escape+explicit
+     (lambda (l)
+      (letrec ((L (lambda (ll out)
+                   (cond
+                    ((null? ll)     (quote (no symbol here)))
+                    ((symbol?       (car ll)) (out (car ll)))
+                    (else           (begin 
+                                     (L (car ll) out) 
+                                     (L (cdr ll) out)))))))
+       (escape 
+        (hop (L l hop))
+        (else l)))))
+
+    (define leftmost/escape
+     (lambda (l)
+      (escape
+       (hop (let L ((ll l))
+             (dbind/car+cdr ll 
+              ((first rest)
+               (cond 
+                ((symbol? first) (hop first))
+                (else (begin 
+                       (L first) 
+                       (L rest)))))
+              (else (quote (no symbol here))))))
+       (else l))))
+
+    ; }}}
+
+    (define rember1*/letcc
+     (lambda (atom sexp)
+      (letrec ((R (lambda (sexp skip)
+                   (dbind/car+cdr sexp
+                    ((a d) 
+                     (cond
+                      ((symbol? a) 
+                       (cond 
+                        ((eq? a atom) d)
+                        (else (cons a (R d skip)))))
+                      (else (let ((new-car (letcc oh (R a oh))))
+                             (cond
+                              ((symbol? new-car) (cons a (R d skip)))
+                              (else (cons new-car d)))))))
+                    (else (skip 'no-present))))))
+       (let ((s (letcc skip (R sexp skip))))
+        (cond
+         ((symbol? s) sexp)
+         (else s))))))
+
+    (define rember1*/try
+     (lambda (atom sexp)
+      (letrec ((R (lambda (sexp skip)
+                   (dbind/car+cdr sexp
+                    ((a d) 
+                     (cond
+                      ((symbol? a) 
+                       (cond 
+                        ((eq? a atom) d)
+                        (else (cons a (R d skip)))))
+                      (else (try
+                             ((oh (cons (R a oh) d))
+                              (else (cons a (R d skip))))))))
+                    (else (skip 'no-present))))))
+       (try 
+        ((skip (R sexp skip))
+         (else sexp))))))
+
     ) ; end of module `seasoned-schemer`
-
-
-
-
-
-
-
-
-
 
 

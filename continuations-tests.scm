@@ -16,11 +16,11 @@
            (identity-cps&return (lambda (x) (lambda (skip) x)))
            (identity-cps&skip (lambda (x) (lambda (skip) (skip 'discard)))))
 
-      (test 1 (try-applicative 
+      (test 1 (try
                ((skip (identity-applicative&return 1 skip))
                 (else (eternity)))))
 
-      (test 2 (try-applicative 
+      (test 2 (try
                ((skip (identity-applicative&skip 1 skip))
                 (else 2))))
 
