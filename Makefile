@@ -1,4 +1,10 @@
 
+run-seasoned-schemer-tests: continuations
+	csc -dynamic seasoned-schemer.scm -j seasoned-schemer
+	csc -dynamic seasoned-schemer.import.scm
+	csc seasoned-schemer-tests.scm -o seasoned-schemer-tests
+	./seasoned-schemer-tests
+
 run-intro-continuations-tests:
 	csi utils.scm continuations.scm < introduction-to-continuations-tests.scm
 
@@ -17,10 +23,5 @@ run-collatz-tests:
 	csc collatz.scm -o collatz-tests
 	./collatz-tests
 
-run-seasoned-schemer-tests: continuations
-	csc -dynamic seasoned-schemer.scm -j seasoned-schemer
-	csc -dynamic seasoned-schemer.import.scm
-	csc seasoned-schemer-tests.scm -o seasoned-schemer-tests
-	./seasoned-schemer-tests
 
 run-all-tests: run-collatz-tests run-continuations-tests run-seasoned-schemer-tests
