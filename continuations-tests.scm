@@ -7,14 +7,14 @@
      (test 1 (letcc hop 1))
      (test 1 (letcc hop (hop 1)))
      (test 1 (letcc hop (add1 (hop 1))))
-     (test 3 (+ 2 (letcc hop (add1 (hop 1))))))
+     (test 10 (+ 9 (letcc hop (add1 (hop 1))))))
 
     (test-group "TRY syntactic abstraction"
 
      (let ((identity-applicative&return (lambda (x skip) x))
            (identity-applicative&skip (lambda (x skip) (skip 'discard))) 
-           (identity-cps&return (lambda (x) (lambda (skip) x)))
-           (identity-cps&skip (lambda (x) (lambda (skip) (skip 'discard)))))
+           (identity-cps&return (lambda/cc skip => identity))
+           (identity-cps&skip (lambda/cc skip => (lambda (x) (skip `(discard ,x))))))
 
       (test 1 (try
                ((skip (identity-applicative&return 1 skip))
@@ -24,25 +24,24 @@
                ((skip (identity-applicative&skip 1 skip))
                 (else 2))))
 
-      (test 1 (try-cps 
-               ((identity-cps&return 1) => identity)
-               (else (eternity))))
+      (test '(1) 
+       (try 
+        ((skip1 (list 1)) 
+         (skip2 'useless) 
+         (else 'even-more-useless))))
 
-      (test 2 (try-cps 
-               ((identity-cps&skip 1) => eternity)
-               (else 2)))
+      (test '(2) 
+       (try 
+        ((skip1 (list 1 (skip1 'discard)))
+         (skip2 (list 2))
+         (else 'useless))))
 
-    (test 11 (letcc cont (+ 10 (try-cps 
-                                ((identity-cps&return 1) => identity)
-                                (else cont in (lambda (k) 2) => eternity)))))
+      (test '(3) 
+       (try 
+        ((skip1 (list 1 (skip1 'discard)))
+         (skip2 (list 2 (skip2 'discard)))
+         (else (list 3)))))
 
-    (test 12 (letcc cont (+ 10 (try-cps 
-                                ((identity-cps&skip 1) => eternity)
-                                (else cont in (lambda (k) 2) => identity)))))
-
-    (test 2 (letcc cont (+ 10 (try-cps 
-                               ((identity-cps&skip 1) => eternity)
-                               (else cont in (lambda (k) (k 2)) => eternity)))))
 
     )) ; end of "TRY" tests group
 

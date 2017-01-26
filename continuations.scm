@@ -45,6 +45,14 @@
          (letcc skip (success alpha)) ...
          beta))))
 
+    (define-syntax lambda/cc
+     (syntax-rules (=>)
+      ((lambda/cc cont => L args body ...)
+       (lambda (cont)
+        (letrec ((L (lambda args body ...))) L)))
+      ((lambda/cc cont => sexp)
+       (lambda (cont) sexp))))
+
      (define-syntax try-cps
       (syntax-rules (else in =>)
        ((try 
