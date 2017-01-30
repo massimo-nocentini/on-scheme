@@ -92,10 +92,10 @@
     (let ((R rember1*/try))
 
       (test "rember1*, atom present" 
-       '((food) (food))(R 'more '((food) more (food))))
+       '((delicious) (food))(R 'more '((delicious) more (food))))
 
       (test "rember1*, atom not present" 
-       '((food) more (food)) (R 'a '((food) more (food))))
+       '((orange) more (fruits)) (R 'pizza '((orange) more (fruits))))
 
      )
     )

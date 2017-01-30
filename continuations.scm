@@ -6,6 +6,7 @@
     (module continuations *
 
      (import scheme chicken)
+     (import matchable)
 
      (define eternity 
       (lambda args 
@@ -15,6 +16,12 @@
       (syntax-rules ()
        ((letcc cont sexp more ...) 
         (call/cc (lambda (cont) sexp more ...)))))
+
+     (define apply/cc
+      (lambda (λ-sexp . args)
+       (match args ; non-exhaustive matching to signal a mistake at call-time
+        ((arg ... (last ...)) 
+         (letcc cont (apply λ-sexp (append arg last (list cont))))))))
 
     (define-syntax escape
      (syntax-rules (else =>)
@@ -37,13 +44,23 @@
         (() null-sexp)
         ((a . d) pair-sexp)))))
 
-     (define-syntax try
-      (syntax-rules (else)
-       ((try ((skip alpha) ... 
-              (else beta)))
-        (letcc success
-         (letcc skip (success alpha)) ...
-         beta))))
+    (define-syntax try
+     (syntax-rules (else =>)
+      ((try ((skip alpha) ...
+             (else beta)))
+       (letcc success
+        (letcc skip (success alpha)) ...
+        beta))
+      ((try ((skip alpha) ...
+             (else => beta)))
+       (letcc success
+        (let ((outputs (list (letcc skip (success alpha)) ...)))
+         (beta outputs))))
+      ((try ((=> λ-sexp (arg ...)) ...
+             (else beta)))
+       (letcc success
+        (letcc cont (success (λ-sexp arg ... cont))) ...
+        beta))))
 
      (define-syntax try-cps
       (syntax-rules (else in =>)
