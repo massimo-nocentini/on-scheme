@@ -209,33 +209,40 @@
                        (cond 
                         ((eq? a atom) d)
                         (else (cons a (R d skip)))))
-                      (else (let ((new-car (letcc oh (R a oh))))
+                      (else (let ((new-car (apply/cc R (list a))))
                              (cond
                               ((symbol? new-car) (cons a (R d skip)))
                               (else (cons new-car d)))))))
                     (else (skip 'no-present))))))
-       (let ((s (letcc skip (R sexp skip))))
+       (let ((s (apply/cc R (list sexp))))
         (cond
          ((symbol? s) sexp)
          (else s))))))
 
     (define rember1*/try
      (lambda (atom sexp)
-      (letrec ((R (lambda (sexp skip)
+      (letrec ((make-skipper (lambda (skip sexp)
+                              (lambda ()
+                               (let ((reason `(,atom not present in ,sexp)))
+                                (display reason)
+                                (skip reason)))))
+               (R (lambda (sexp keep-searching)
                    (dbind/car+cdr sexp
                     ((a d) 
                      (cond
                       ((symbol? a) 
                        (cond 
                         ((eq? a atom) d)
-                        (else (cons a (R d skip)))))
+                        (else (cons a (R d keep-searching)))))
                       (else (try
-                             ((oh (cons (R a oh) d))
-                              (else (cons a (R d skip))))))))
-                    (else (skip 'no-present))))))
+                             ((skip (cons (R a (make-skipper skip a)) d))
+                              (else (cons a (R d keep-searching))))))))
+                    (else (keep-searching))))))
        (try 
-        ((skip (R sexp skip))
-         (else sexp))))))
+        ((skip (R sexp (make-skipper skip sexp)))
+         (else => (lambda (previous) 
+                   (display previous) 
+                   sexp)))))))
 
     ) ; end of module `seasoned-schemer`
 
