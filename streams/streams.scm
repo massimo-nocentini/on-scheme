@@ -2,13 +2,13 @@
 (use test)
 (use numbers)
 
-    #;(define-syntax delay
-     (syntax-rules ()
-      ((delay expr) (make-promise expr))))
-
     (define stream-null? (compose null? force))
     (define stream-car (compose car force)) 
     (define stream-cdr (compose cdr force)) 
+
+    (define-syntax stream-cons
+     (syntax-rules ()
+      ((stream-cons a d) (delay (cons a d)))))
 
     (define empty-stream (delay '()))
 
@@ -17,16 +17,14 @@
       (stream-car s)
       (stream-ref (- n 1) (stream-cdr s))))
 
-    (define-syntax stream-cons
-     (syntax-rules ()
-      ((stream-cons a d) (delay (cons a d)))))
-
-    (define (stream-map proc s)
-     (if (stream-null? s)
-      empty-stream
-      (stream-cons
-       (proc (stream-car s))
-       (stream-map proc (stream-cdr s)))))
+    (define stream-map 
+     (lambda (proc) 
+      (letrec ((M (lambda (s)
+                   (delay-force
+                    (cond 
+                     ((stream-null? s) empty-stream)
+                     (else (stream-cons (proc (stream-car s)) (M (stream-cdr s)))))))))
+       M)))
 
     (define (stream-for-each proc s)
      (if (stream-null? s)
@@ -218,21 +216,36 @@
 
     (define inverse-series
      (lambda (s)
-      (let ((one (stream-cons 1 (stream-repeat 0))))
-       (letrec ((I (stream-cons 1 ((scale-series -1) 
-                                   (mul-series (stream-cdr s) I)))))
-        I))))
+      (letrec ((I (stream-cons 1 ((scale-series -1) 
+                                  (mul-series (stream-cdr s) I)))))
+       I)))
 
     (define division-series
      (lambda (num denum)
       (mul-series num (inverse-series denum))))
+
+    (define stream-sqrt
+     (lambda (n)
+      (letrec ((average (lambda args
+                         (/ (foldr + 0 args) (length args))))
+               (improve (lambda (guess)
+                         (average guess (/ n guess))))
+               (guesses (stream-cons 1 ((stream-map improve) guesses))))
+       guesses)))
+
+    (define stream-pi
+     (letrec ((summands (lambda (n) 
+                         (stream-cons 
+                          (/ 1 n) 
+                          ((stream-map -) (summands (+ n 2)))))))
+      ((scale-series 4) ((stream-cumulatives +) (summands 1)))))
 
     (define run-tests
      (lambda ()
       (let* (
              (first-10-nats '(0 1 2 3 4 5 6 7 8 9))
              (x (stream-range 0 10))
-             (seq (stream-map accum (stream-range 1 20)))
+             (seq ((stream-map accum) (stream-range 1 20)))
              (evens (stream-filter even? seq))
              (multiples-of-5 (stream-filter (divisable-by? 5) seq))
              (nats (stream-from 0))
@@ -318,6 +331,10 @@
      (test '(1 -1 -1 0 0 0 0 0 0 0) (stream-take 10 (inverse-series (stream-cdr fibs))))
      (test '(1 0 0 0 0 0 0 0 0 0) (stream-take 10 (mul-series fibs>0 (inverse-series fibs>0))))
      (test '(0 1 0 1/3 0 2/15 0 17/315 0 62/2835) (stream-take 10 tangent-series)))
+    (test '(1 3/2 17/12 577/408 665857/470832) (stream-take 5 (stream-sqrt 2)))
+    (let ((exact-pi (stream-take 10 stream-pi)))
+     (test '(4 8/3 52/15 304/105 1052/315 10312/3465 147916/45045 135904/45045 2490548/765765 44257352/14549535) (map identity exact-pi))
+    )
     ))
     ))
 
