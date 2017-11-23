@@ -216,9 +216,22 @@
         ((scale-series (stream-car s)) (stream-cdr r))
         (mul-series (stream-cdr s) r)))))
 
+    (define inverse-series
+     (lambda (s)
+      (let ((one (stream-cons 1 (stream-repeat 0))))
+       (letrec ((I (stream-cons 1 ((scale-series -1) 
+                                   (mul-series (stream-cdr s) I)))))
+        I))))
+
+    (define division-series
+     (lambda (num denum)
+      (mul-series num (inverse-series denum))))
+
     (define run-tests
      (lambda ()
-      (let* ((x (stream-range 0 10))
+      (let* (
+             (first-10-nats '(0 1 2 3 4 5 6 7 8 9))
+             (x (stream-range 0 10))
              (seq (stream-map accum (stream-range 1 20)))
              (evens (stream-filter even? seq))
              (multiples-of-5 (stream-filter (divisable-by? 5) seq))
@@ -242,13 +255,14 @@
        (test '(10 15 45 55 105 120 190) (stream->list multiples-of-5))
        (test '(0 1 2 3 4 5 6 7 8 9) (stream-take 10 nats))
        (test 117 (stream-ref 100 no-7s))
+    (test first-10-nats ((compose stream->list list->stream) first-10-nats)) ; therefore `identity`
     (test '(0 1 1 2 3 5 8 13 21 34) (stream-take 10 fibs))
     (test '(2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97 101 103 107 109 113 127 131 137 139 149 151 157 163 167 173 179 181 191 193 197 199 211 223 227 229 233 239 241 251 257 263 269 271 277 281 283 293 307 311 313 317 331 337 347 349 353 359 367 373 379 383 389 397 401 409 419 421 431 433 439 443 449 457 461 463 467 479 487 491 499 503 509 521 523 541)
      (stream-take 100 primes))
     (test '(1 1 1 1 1 1 1 1 1 1) (stream-take 10 ones))
     (test '(1 4 2 8 5 7 1 4 2 8 5 7 1 4 2 8 5 7 1 4) ; 1/7 \sim 0.142..
      (stream-take 20 frac/1-7))
-    (test '(18 5 7 1 4 2 8 5 7 1 4 2 8 5 7 1 4 2 8 5) ; 13/7 \sim 18.571.. wrong use!!
+    (test '(18 5 7 1 4 2 8 5 7 1 4 2 8 5 7 1 4 2 8 5) ; 13/7 \sim 18.571.. wrong usage!!
      (stream-take 20 frac/13-7))
     (test '(3 7 5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0) ; 3/8 = 0.375
      (stream-take 20 frac/3-8))
@@ -263,9 +277,7 @@
                                 ((stream-zip-with *) S (stream-repeat 3)) 
                                 ((stream-zip-with *) S (stream-repeat 5)))))
              (exponential-series (stream-cons 1 (integrate-series exponential-series)))
-             (cosine-series (stream-cons 1 ((stream-zip-with *) 
-                                            (integrate-series sine-series)
-                                            (stream-repeat -1))))
+             (cosine-series (stream-cons 1 (integrate-series ((scale-series -1) sine-series))))
              (sine-series (stream-cons 0 (integrate-series cosine-series)))
             )
      (test '(0 1 2 3 4 5 6 7 8 9) (stream-take 10 nats))
@@ -275,32 +287,40 @@
       (stream-take 100 primes))
      (test '(1 2 4 8 16 32 64 128 256 512) (stream-take 10 doubles))
      (test '(1 1 2 6 24 120 720 5040 40320 362880) (stream-take 10 factorials))
-     (let
-      ((nats-cumulatives ((stream-cumulatives +) nats))
-       (fibs-cumulatives ((stream-cumulatives +) fibs))
-       (fibs-produlatives ((stream-cumulatives *) (stream-cdr fibs))))
-      (test '(0 1 3 6 10 15 21 28 36 45) (stream-take 10 nats-cumulatives))
-      (test '(0 1 2 4 7 12 20 33 54 88) (stream-take 10 fibs-cumulatives)) ; https://oeis.org/A000071
-      (test-assert (equal?
-                    (stream-take 10 fibs-cumulatives)
-                    (stream-take 10 ((stream-zip-with -) 
-                                     ((compose stream-cdr stream-cdr) fibs) 
-                                     (stream-repeat 1)))))
-      (test '(1 1 2 6 30 240 3120 65520 2227680 122522400) (stream-take 10 fibs-produlatives)))
-     (test '(0 1 2 3 4 5 6 7 8 9) ((compose stream->list list->stream) '(0 1 2 3 4 5 6 7 8 9)))
-     (test '(1 2 3 4 5 6 6 8 9 10) (stream-take 10 S))
-     (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880) (stream-take 10 exponential-series))
-     (test '(1 0 -1/2 0 1/24 0 -1/720 0 1/40320 0) (stream-take 10 cosine-series))
-     (test '(0 1 0 -1/6 0 1/120 0 -1/5040 0 1/362880) (stream-take 10 sine-series))
-     (test '(1 2 3 4 5 6 7 8 9 10) (stream-take 10 (mul-series ones ones)))
-     (test '(0 1 3 6 10 15 21 28 36 45) (stream-take 10 (mul-series nats ones)))
-    (let ((sine2+cosine2 (add-series 
-                          (mul-series sine-series sine-series) 
-                          (mul-series cosine-series cosine-series))))
-     (test '(1 0 0 0 0 0 0 0 0 0) (stream-take 10 sine2+cosine2)))
+    (let
+     ((nats-cumulatives ((stream-cumulatives +) nats))
+      (fibs-cumulatives ((stream-cumulatives +) fibs))
+      (fibs-produlatives ((stream-cumulatives *) (stream-cdr fibs))))
+     (test '(0 1 3 6 10 15 21 28 36 45) (stream-take 10 nats-cumulatives))
+     (test '(0 1 2 4 7 12 20 33 54 88) (stream-take 10 fibs-cumulatives)) ; https://oeis.org/A000071
+     (test-assert (equal?
+                   (stream-take 10 fibs-cumulatives)
+                   (stream-take 10 ((stream-zip-with -) 
+                                    ((compose stream-cdr stream-cdr) fibs) 
+                                    (stream-repeat 1)))))
+     (test '(1 1 2 6 30 240 3120 65520 2227680 122522400) (stream-take 10 fibs-produlatives)))
+    (test '(1 2 3 4 5 6 6 8 9 10) (stream-take 10 S))
+    (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880) (stream-take 10 exponential-series))
+    (test '(1 0 -1/2 0 1/24 0 -1/720 0 1/40320 0) (stream-take 10 cosine-series))
+    (test '(0 1 0 -1/6 0 1/120 0 -1/5040 0 1/362880) (stream-take 10 sine-series))
+    (test '(1 2 3 4 5 6 7 8 9 10) (stream-take 10 (mul-series ones ones)))
+    (test '(0 1 3 6 10 15 21 28 36 45) (stream-take 10 (mul-series nats ones)))
+    (let ((sine2+cosine2 (add-series
+                          (mul-series sine-series sine-series)
+                          (mul-series cosine-series cosine-series)))
+          (fibs>0 (stream-cdr fibs))
+          (tangent-series (division-series sine-series cosine-series))
+         )
+     (test '(1 0 0 0 0 0 0 0 0 0) (stream-take 10 sine2+cosine2))
+     (test '(1 -1 0 0 0 0 0 0 0 0) (stream-take 10 (inverse-series ones)))
+     (test '(1 -2 1 0 0 0 0 0 0 0) (stream-take 10 (inverse-series nats>0)))
+     (test '(1 0 0 0 0 0 0 0 0 0) (stream-take 10 (mul-series nats>0 (inverse-series nats>0))))
+     (test '(1 -1 -1 0 0 0 0 0 0 0) (stream-take 10 (inverse-series (stream-cdr fibs))))
+     (test '(1 0 0 0 0 0 0 0 0 0) (stream-take 10 (mul-series fibs>0 (inverse-series fibs>0))))
+     (test '(0 1 0 1/3 0 2/15 0 17/315 0 62/2835) (stream-take 10 tangent-series)))
     ))
     ))
 
 (run-tests)
 
-;(test-exit)
+    ;(test-exit)
