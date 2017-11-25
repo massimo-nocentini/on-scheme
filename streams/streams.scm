@@ -4,55 +4,67 @@
 
     (define stream-null? (compose null? force))
     (define stream-car (compose car force)) 
-    (define stream-cdr (compose cdr force)) 
+    (define stream-cdr (compose cdr force))
+    (define stream-cadr (compose stream-car stream-cdr))
+    (define stream-caddr (compose stream-car stream-cdr stream-cdr))
 
     (define-syntax stream-cons
      (syntax-rules ()
-      ((stream-cons a d) (delay (cons a d)))))
+      ((stream-cons a d) (delay-force (cons a d)))))
 
-    (define empty-stream (delay '()))
+    (define-syntax stream-dest/car+cdr 
+     (syntax-rules ()
+      ((stream-dest/car+cdr s (a d) body ...) 
+       (delay-force 
+        (let ((a (stream-car s))
+              (d (stream-cdr s)))
+         body ...)))))
 
-    (define (stream-ref n s)
-     (if (= n 0)
-      (stream-car s)
-      (stream-ref (- n 1) (stream-cdr s))))
+    (define empty-stream (delay-force '()))
 
-    (define stream-map 
-     (lambda (proc) 
+    (define stream-ref
+     (lambda (n s)
+      (cond
+       ((zero? n) (stream-car s))
+       (else (stream-ref (sub1 n) (stream-cdr s))))))
+
+    (define stream-map
+     (lambda (func)
       (letrec ((M (lambda (s)
                    (delay-force
                     (cond 
                      ((stream-null? s) empty-stream)
-                     (else (stream-cons (proc (stream-car s)) (M (stream-cdr s)))))))))
+                     (else (stream-dest/car+cdr s (a d)
+                            (stream-cons (func a) (M d)))))))))
        M)))
 
-    (define (stream-for-each proc s)
-     (if (stream-null? s)
-      '()
-      (begin 
-       (proc (stream-car s))
-       (stream-for-each proc (stream-cdr s)))))
+    (define stream-range 
+     (lambda (low high)
+      (letrec ((R (lambda (low)
+                   (delay-force
+                    (cond
+                     ((>= low high) empty-stream)
+                     (else (stream-cons low (R (add1 low)))))))))
+       (R low))))
 
-    (define (stream-range low high)
-     (if (>= low high)
-      empty-stream
-      (stream-cons low (stream-range (+ low 1) high))))
+    (define stream-filter 
+     (lambda (pred?)
+      (letrec ((F (lambda (s)
+                   (delay-force
+                    (cond 
+                     ((stream-null? s) empty-stream)
+                     (else (stream-dest/car+cdr s (a d)
+                            (cond
+                             ((pred? a) (stream-cons a (F d)))
+                             (else (F d))))))))))
+       F)))
 
-(define (stream-filter pred? s)
- (delay-force
-  (cond 
-   ((stream-null? s) empty-stream)
-   ((pred? (stream-car s))
-    (stream-cons 
-     (stream-car s)
-     (stream-filter pred? (stream-cdr s))))
-   (else (stream-filter pred? (stream-cdr s))))))
-
-    (define stream-take 
+    (define stream-take
      (lambda (n s)
       (cond
        ((or (equal? n 0) (stream-null? s)) '())
-       (else (cons (stream-car s) (stream-take (sub1 n) (stream-cdr s)))))))
+       (else (force (stream-dest/car+cdr s (a d)
+                     (cons a (stream-take (sub1 n) d))))))))
 
     (define stream->list
      (lambda (s)
@@ -60,16 +72,7 @@
 
     (define stream-from
      (lambda (n)
-      (stream-cons n (stream-from (add1 n)))))
-
-    (define (display-stream s)
-     (newline)
-     (stream-for-each display-line s) 
-     (newline))
-
-    (define (display-line x)
-     (newline)
-     (display x))
+      (stream-cons n (stream-from (add1 n))))) ; no `delay-force` here?
 
 ; ******************************************************************************
 
@@ -94,10 +97,10 @@
 
     (define eratosthenes
      (lambda (s)
-      (let ((prime (stream-car s)))
-       (stream-cons prime (eratosthenes (stream-filter 
-                                         (compose not (divisable-by? prime)) 
-                                         (stream-cdr s)))))))
+      (stream-dest/car+cdr s (prime primes)
+       (stream-cons prime (eratosthenes 
+                           ((stream-filter (compose not (divisable-by? prime))) 
+                            primes))))))
 
     (define stream-repeat
      (lambda (n)
@@ -111,17 +114,6 @@
                     (apply op (map stream-car streams)) 
                     (apply Z (map stream-cdr streams))))))
        Z)))
-      
-
-    #;(define stream-zip-with 
-     (lambda (op)
-      (letrec ((Z (lambda streams
-                   (cond
-                    ((any stream-null? streams) empty-stream)
-                    (else (stream-cons 
-                           (apply op (map stream-car streams)) 
-                           (apply Z (map stream-cdr streams))))))))
-      Z)))
 
     (define make-prime?
      (lambda (primes)
@@ -135,12 +127,12 @@
                       (P primes)))))
        prime?)))
 
-    (define stream-cumulatives 
+    (define stream-cumulatives
      (lambda (op)
       (lambda (s)
        (letrec ((C (lambda streams
                     ;((compose display stream-car car) streams)
-                    (stream-cons 
+                    (stream-cons
                      (apply op (map stream-car streams))
                      ;(apply C (cons (stream-cdr s) streams))))))
                      (apply C (cons ((compose stream-cdr car) streams) streams))))))
@@ -148,13 +140,14 @@
 
     (define list->stream
      (lambda (l)
-      (cond 
-       ((null? l) empty-stream)
-       (else (stream-cons (car l) (list->stream (cdr l)))))))
+      (delay-force
+       (cond 
+        ((null? l) empty-stream)
+        (else (stream-cons (car l) (list->stream (cdr l))))))))
 
     (define stream-append
      (letrec ((S (lambda (r s)
-                  (cond 
+                  (cond
                    ((stream-null? r) s)
                    (else (stream-cons (stream-car r) (S (stream-cdr r) s)))))))
       (lambda streams
@@ -235,10 +228,27 @@
 
     (define stream-pi
      (letrec ((summands (lambda (n) 
-                         (stream-cons 
-                          (/ 1 n) 
-                          ((stream-map -) (summands (+ n 2)))))))
+                         (stream-cons (/ 1 n) ((stream-map -) (summands (+ n 2)))))))
       ((scale-series 4) ((stream-cumulatives +) (summands 1)))))
+
+    (define euler-transform
+     (lambda (s)
+      (let ((n-1 (stream-car s))
+            (n (stream-cadr s))
+            (n+1 (stream-caddr s))
+            (square (lambda (x) (* x x))))
+       (stream-cons 
+        (- n+1 (/ (square (- n+1 n)) (+ n+1 n-1 (* -2 n))))
+        (euler-transform (stream-cdr s))))))
+
+    (define stream-tableau
+     (lambda (transform)
+      (letrec ((T (lambda (s)
+                   (stream-cons s ((compose T transform) s)))))
+       (lambda (s)
+        ((stream-map stream-car) (T s))))))
+
+;________________________________________________________________________________
 
     (define run-tests
      (lambda ()
@@ -246,11 +256,11 @@
              (first-10-nats '(0 1 2 3 4 5 6 7 8 9))
              (x (stream-range 0 10))
              (seq ((stream-map accum) (stream-range 1 20)))
-             (evens (stream-filter even? seq))
-             (multiples-of-5 (stream-filter (divisable-by? 5) seq))
+             (evens ((stream-filter even?) seq))
+             (multiples-of-5 ((stream-filter (divisable-by? 5)) seq))
              (nats (stream-from 0))
              (nats>0 (stream-cdr (stream-from 0)))
-             (no-7s (stream-filter (compose not (divisable-by? 7)) nats))
+             (no-7s ((stream-filter (compose not (divisable-by? 7))) nats))
              (fibs (fib-gen 0 1))
              (primes (eratosthenes (stream-from 2)))
              (ones (stream-repeat 1))
@@ -282,7 +292,7 @@
     (letrec ((nats (stream-cons 0 ((stream-zip-with +) ones nats)))
              (fibs (stream-cons 0 (stream-cons 1 ((stream-zip-with +) fibs (stream-cdr fibs)))))
              (squares (stream-cons 1 ((stream-zip-with *) squares (stream-repeat 2))))
-             (primes (stream-cons 2 (stream-filter (make-prime? primes) (stream-from 3))))
+             (primes (stream-cons 2 ((stream-filter (make-prime? primes)) (stream-from 3))))
              (doubles (stream-cons 1 ((stream-zip-with +) doubles doubles)))
              (factorials (stream-cons 1 ((stream-zip-with *) factorials nats>0)))
              (S (stream-cons 1 ((stream-merge <) 
@@ -332,12 +342,15 @@
      (test '(1 0 0 0 0 0 0 0 0 0) (stream-take 10 (mul-series fibs>0 (inverse-series fibs>0))))
      (test '(0 1 0 1/3 0 2/15 0 17/315 0 62/2835) (stream-take 10 tangent-series)))
     (test '(1 3/2 17/12 577/408 665857/470832) (stream-take 5 (stream-sqrt 2)))
-    (let ((exact-pi (stream-take 10 stream-pi)))
-     (test '(4 8/3 52/15 304/105 1052/315 10312/3465 147916/45045 135904/45045 2490548/765765 44257352/14549535) (map identity exact-pi))
-    )
+    (test '(4 8/3 52/15 304/105 1052/315 10312/3465 147916/45045 135904/45045 2490548/765765 44257352/14549535) 
+     (stream-take 10 stream-pi))
+    (test '(19/6 47/15 1321/420 989/315 21779/6930 141481/45045 1132277/360360 801821/255255 91424611/29099070 45706007/14549535) 
+     (stream-take 10 (euler-transform stream-pi)))
+    (test '(4 19/6 597/190 73480501/23389520 908158408158535624217/289075793976001466280 6122842329181964122242157261623055408836895066390212805633550889340420878203921614979/1948961244684053510230839929806362227580597549551747444462336644887607671758516827680) 
+     (stream-take 6 ((stream-tableau euler-transform) stream-pi)))
     ))
     ))
 
 (run-tests)
 
-    ;(test-exit)
+;(test-exit)
