@@ -14,10 +14,10 @@
 
     (define-syntax stream-dest/car+cdr 
      (syntax-rules ()
-      ((stream-dest/car+cdr s (a d) body ...) 
+      ((stream-dest/car+cdr ((s (a d)) ...) body ...) 
        (delay-force 
-        (let ((a (stream-car s))
-              (d (stream-cdr s)))
+        (let ((a (stream-car s)) ...
+              (d (stream-cdr s)) ...)
          body ...)))))
 
     (define empty-stream (delay-force '()))
@@ -34,7 +34,7 @@
                    (delay-force
                     (cond 
                      ((stream-null? s) empty-stream)
-                     (else (stream-dest/car+cdr s (a d)
+                     (else (stream-dest/car+cdr ((s (a d)))
                             (stream-cons (func a) (M d)))))))))
        M)))
 
@@ -53,7 +53,7 @@
                    (delay-force
                     (cond 
                      ((stream-null? s) empty-stream)
-                     (else (stream-dest/car+cdr s (a d)
+                     (else (stream-dest/car+cdr ((s (a d)))
                             (cond
                              ((pred? a) (stream-cons a (F d)))
                              (else (F d))))))))))
@@ -63,7 +63,7 @@
      (lambda (n s)
       (cond
        ((or (equal? n 0) (stream-null? s)) '())
-       (else (force (stream-dest/car+cdr s (a d)
+       (else (force (stream-dest/car+cdr ((s (a d)))
                      (cons a (stream-take (sub1 n) d))))))))
 
     (define stream->list
@@ -97,7 +97,7 @@
 
     (define eratosthenes
      (lambda (s)
-      (stream-dest/car+cdr s (prime primes)
+      (stream-dest/car+cdr ((s (prime primes)))
        (stream-cons prime (eratosthenes 
                            ((stream-filter (compose not (divisable-by? prime))) 
                             primes))))))
@@ -131,10 +131,8 @@
      (lambda (op)
       (lambda (s)
        (letrec ((C (lambda streams
-                    ;((compose display stream-car car) streams)
                     (stream-cons
                      (apply op (map stream-car streams))
-                     ;(apply C (cons (stream-cdr s) streams))))))
                      (apply C (cons ((compose stream-cdr car) streams) streams))))))
         (apply C (list s))))))
 
@@ -158,9 +156,9 @@
                      (rest (cdr streams)))
                 (S first (apply stream-append rest)))))))))
 
-    (define stream-binary-merge
+    (define stream-merge
      (lambda (pred?)
-      (letrec ((M (lambda (s r)
+      (letrec ((M (lambda (s r) ; binary merge strategy
                    (delay-force ; to allow *safe* composition in foldings
                     (cond
                      ((stream-null? s) r)
@@ -171,12 +169,8 @@
                        (cond
                         ((pred? scar rcar) (stream-cons scar (M (stream-cdr s) r)))
                         (else (stream-cons rcar (M s (stream-cdr r))))))))))))
-       M)))
-
-    (define stream-merge
-     (lambda (pred?)
-      (lambda streams
-       (foldr (stream-binary-merge pred?) empty-stream streams))))
+       (lambda streams
+        (foldr M empty-stream streams)))))
 
     (define radix-expand 
      (lambda (num den radix)
@@ -187,10 +181,10 @@
     (define integrate-series
      (lambda (s)
       (letrec ((I (lambda (s n)
-                   (stream-cons 
-                    (/ (stream-car s) (stream-car n)) 
-                    (I (stream-cdr s) (stream-cdr n))))))
-       (I s (stream-from 1)))))
+                   (stream-dest/car+cdr ((s (scar scdr))
+                                         (n (ncar ncdr)))
+                    (stream-cons (/ scar ncar) (I scdr ncdr))))))
+      (I s (stream-from 1)))))
 
     (define add-series (stream-zip-with +))
 
@@ -201,17 +195,18 @@
 
     (define mul-series
      (lambda (s r)
-      (stream-cons 
-       (* (stream-car s) (stream-car r))
-       (add-series
-        ((scale-series (stream-car s)) (stream-cdr r))
-        (mul-series (stream-cdr s) r)))))
+      (stream-dest/car+cdr ((s (scar scdr))
+                            (r (rcar rcdr)))
+       (stream-cons (* scar rcar) (add-series 
+                                   ((scale-series scar) rcdr) 
+                                   (mul-series scdr r))))))
 
     (define inverse-series
      (lambda (s)
-      (letrec ((I (stream-cons 1 ((scale-series -1) 
-                                  (mul-series (stream-cdr s) I)))))
-       I)))
+      (stream-dest/car+cdr ((s (scar scdr)))
+       (letrec ((I (stream-cons (/ 1 scar) ((scale-series (/ -1 scar)) 
+                                            (mul-series scdr I)))))
+        I))))
 
     (define division-series
      (lambda (num denum)
@@ -219,10 +214,8 @@
 
     (define stream-sqrt
      (lambda (n)
-      (letrec ((average (lambda args
-                         (/ (foldr + 0 args) (length args))))
-               (improve (lambda (guess)
-                         (average guess (/ n guess))))
+      (letrec ((average (lambda args (/ (foldr + 0 args) (length args))))
+               (improve (lambda (guess) (average guess (/ n guess))))
                (guesses (stream-cons 1 ((stream-map improve) guesses))))
        guesses)))
 
