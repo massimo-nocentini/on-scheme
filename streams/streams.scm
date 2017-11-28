@@ -128,13 +128,14 @@
        prime?)))
 
     (define stream-cumulatives
-     (lambda (op)
-      (lambda (s)
-       (letrec ((C (lambda streams
-                    (stream-cons
-                     (apply op (map stream-car streams))
-                     (apply C (cons ((compose stream-cdr car) streams) streams))))))
-        (apply C (list s))))))
+     (let ((shift-first (compose stream-cdr car)))
+      (lambda (op)
+       (lambda (s)
+        (letrec ((C (lambda streams
+                     (stream-cons
+                      (apply op (map stream-car streams))
+                      (apply C (cons (shift-first streams) streams))))))
+         (apply C (list s)))))))
 
     (define list->stream
      (lambda (l)
@@ -212,6 +213,21 @@
      (lambda (num denum)
       (mul-series num (inverse-series denum))))
 
+    (define integral-series
+     (lambda (init dt)
+      (lambda (s)
+       (letrec ((I (stream-cons init (add-series ((scale-series dt) (force s)) I))))
+        I))))
+
+    (define solve-diffeq
+     (lambda (integral)
+      (lambda (f)
+       (letrec ( 
+                 (y (integral (delay dy)))
+                 (dy (stream-cons 0 ((stream-map f) y)) )
+                 )
+        y))))
+
     (define stream-sqrt
      (lambda (n)
       (letrec ((average (lambda args (/ (foldr + 0 args) (length args))))
@@ -219,10 +235,15 @@
                (guesses (stream-cons 1 ((stream-map improve) guesses))))
        guesses)))
 
-    (define stream-pi
+    (define pi-series
      (letrec ((summands (lambda (n) 
                          (stream-cons (/ 1 n) ((stream-map -) (summands (+ n 2)))))))
       ((scale-series 4) ((stream-cumulatives +) (summands 1)))))
+
+    (define log2-series
+     (letrec ((summands (lambda (n) 
+                         (stream-cons (/ 1 n) ((stream-map -) (summands (add1 n)))))))
+      ((stream-cumulatives +) (summands 1))))
 
     (define euler-transform
      (lambda (s)
@@ -240,6 +261,103 @@
                    (stream-cons s ((compose T transform) s)))))
        (lambda (s)
         ((stream-map stream-car) (T s))))))
+
+    (define stream-enumerate
+     (letrec ((tuple (compose flatten list))
+              (B (lambda (s r)
+                  (delay-force
+                   (cond
+                    ((stream-null? s) r)
+                    ((stream-null? r) s)
+                    (else (stream-dest/car+cdr ((s (scar scdr)) (r (rcar rcdr)))
+                           (stream-cons 
+                            (tuple scar rcar)
+                            (interleave 
+                             ((stream-map (lambda (ri) (tuple scar ri))) rcdr)
+                             (B scdr rcdr)))))))))
+              (interleave (lambda (s r)
+                           (delay-force
+                            (cond
+                             ((stream-null? s) r)
+                             (else (stream-dest/car+cdr ((s (scar scdr)))
+                                    (stream-cons scar (interleave r scdr)))))))))
+      (lambda streams
+       (foldr B empty-stream streams))))
+
+    (define stream-enumerate-all
+     (letrec ((tuple (compose flatten list))
+              (B (lambda (s r)
+                  (delay-force
+                   (cond
+                    ((stream-null? s) r)
+                    ((stream-null? r) s)
+                    (else (stream-dest/car+cdr ((s (scar scdr)) (r (rcar rcdr)))
+                           (stream-cons 
+                            (tuple scar rcar)
+                            (interleave
+                             (interleave 
+                              ((stream-map (lambda (ri) (tuple scar ri))) rcdr)
+                              (B scdr rcdr))
+                             ((stream-map (lambda (si) (tuple si rcar))) scdr)))))))))
+              (interleave (lambda (s r)
+                           (delay-force
+                            (cond
+                             ((stream-null? s) r)
+                             (else (stream-dest/car+cdr ((s (scar scdr)))
+                                    (stream-cons scar (interleave r scdr)))))))))
+      (lambda streams
+       (foldr B empty-stream streams))))
+
+    (define stream-enumerate-weighted
+     (lambda (weight)
+      (letrec ((make-tuple (compose flatten list))
+               (B (lambda (s r)
+                   (delay-force
+                    (cond
+                     ((stream-null? s) r)
+                     ((stream-null? r) s)
+                     (else (stream-dest/car+cdr ((s (scar scdr)) (r (rcar rcdr)))
+                            (stream-cons 
+                             (make-tuple scar rcar) 
+                             (interleave 
+                              ((stream-map (lambda (ri) (make-tuple scar ri))) rcdr)
+                              (B scdr rcdr)))))))))
+               (interleave (lambda (s r)
+                            (delay-force
+                             (cond
+                              ((stream-null? s) r)
+                              ((stream-null? r) s)
+                              (else
+                               (let ((scar (stream-car s))
+                                     (rcar (stream-car r)))
+                                (cond
+                                 ((< (apply weight scar) (apply weight rcar)) 
+                                  (stream-cons scar (interleave (stream-cdr s) r)))
+                                 (else (stream-cons rcar (interleave s (stream-cdr r))))))))))))
+    (lambda streams
+     (foldr B empty-stream streams)))))
+
+    (define stream-take-while
+     (lambda (pred?)
+      (letrec ((stop? (compose not pred?))
+               (W (lambda (s)
+                   (delay-force
+                    (cond
+                     ((stream-null? s) empty-stream)
+                     (else (let ((scar (stream-car s)))
+                            (cond
+                             ((stop? scar) (stream-cons scar empty-stream))
+                             (else (stream-cons scar (W (stream-cdr s))))))))))))
+       W)))
+
+    (define Pythagorean-triples
+     (lambda (n)
+      (let ((F (lambda (triple) 
+                (equal? 
+                 (+ (expt (car triple) n) (expt (cadr triple) n))
+                 (expt (caddr triple) n))))
+            (nats (stream-from 1)))
+       ((stream-filter F) (stream-enumerate nats nats nats)))))
 
 ;________________________________________________________________________________
 
@@ -315,7 +433,8 @@
                                     ((compose stream-cdr stream-cdr) fibs) 
                                     (stream-repeat 1)))))
      (test '(1 1 2 6 30 240 3120 65520 2227680 122522400) (stream-take 10 fibs-produlatives)))
-    (test '(1 2 3 4 5 6 6 8 9 10) (stream-take 10 S))
+    (test '(1 2 3 4 5 6 6 8 9 10 10 12 12 12 15 15 16 18 18 18 20 20 20 24 24 24 24 25 27 30 30 30 30 30 30 32 36 36 36 36 36 36 40 40 40 40 45 45 45 48) 
+     (stream-take 50 S))
     (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880) (stream-take 10 exponential-series))
     (test '(1 0 -1/2 0 1/24 0 -1/720 0 1/40320 0) (stream-take 10 cosine-series))
     (test '(0 1 0 -1/6 0 1/120 0 -1/5040 0 1/362880) (stream-take 10 sine-series))
@@ -333,14 +452,121 @@
      (test '(1 0 0 0 0 0 0 0 0 0) (stream-take 10 (mul-series nats>0 (inverse-series nats>0))))
      (test '(1 -1 -1 0 0 0 0 0 0 0) (stream-take 10 (inverse-series (stream-cdr fibs))))
      (test '(1 0 0 0 0 0 0 0 0 0) (stream-take 10 (mul-series fibs>0 (inverse-series fibs>0))))
+     (let ((non-unary-series (stream-cons 4 nats>0)))
+      (test '(1/4 -1/16 -7/64 -33/256 -119/1024 -305/4096 -231/16384 3263/65536 26537/262144 133551/1048576) 
+       (stream-take 10 (inverse-series non-unary-series)))
+      (test '(1 0 0 0 0 0 0 0 0 0) 
+       (stream-take 10 (mul-series non-unary-series (inverse-series non-unary-series)))))
      (test '(0 1 0 1/3 0 2/15 0 17/315 0 62/2835) (stream-take 10 tangent-series)))
     (test '(1 3/2 17/12 577/408 665857/470832) (stream-take 5 (stream-sqrt 2)))
     (test '(4 8/3 52/15 304/105 1052/315 10312/3465 147916/45045 135904/45045 2490548/765765 44257352/14549535) 
-     (stream-take 10 stream-pi))
+     (stream-take 10 pi-series))
     (test '(19/6 47/15 1321/420 989/315 21779/6930 141481/45045 1132277/360360 801821/255255 91424611/29099070 45706007/14549535) 
-     (stream-take 10 (euler-transform stream-pi)))
+     (stream-take 10 (euler-transform pi-series)))
     (test '(4 19/6 597/190 73480501/23389520 908158408158535624217/289075793976001466280 6122842329181964122242157261623055408836895066390212805633550889340420878203921614979/1948961244684053510230839929806362227580597549551747444462336644887607671758516827680) 
-     (stream-take 6 ((stream-tableau euler-transform) stream-pi)))
+     (stream-take 6 ((stream-tableau euler-transform) pi-series)))
+    (test '(1 1/2 5/6 7/12 47/60 37/60 319/420 533/840 1879/2520 1627/2520) 
+     (stream-take 10 log2-series))
+    (test '(7/10 29/42 25/36 457/660 541/780 97/140 9901/14280 33181/47880 1747/2520 441871/637560)
+     (stream-take 10 (euler-transform log2-series)))
+    (test '(1 7/10 165/238 380522285/548976276 755849325680052062216639661/1090460049411856348776491380 318738655178511632543822227346530350595387994474669640697143248267438214457834012964733985868157066661175569469393/459842677096914359400941379802880332404679211833600390612039625007123278498884893986945137648853585966630779010940)
+     (stream-take 6 ((stream-tableau euler-transform) log2-series)))
+
+    (test '(0 1 2 3 4 5 6 7 8 9) (stream-take 10 (stream-enumerate nats)))
+    (test '((0 0) (0 1) (1 1) (0 2) (1 2) (0 3) (2 2) (0 4) (1 3) (0 5)) 
+     (stream-take 10 (stream-enumerate nats nats)))
+    (test '((0 0 0) (0 0 1) (1 0 1) (0 1 1) (1 1 1) (0 0 2) (2 1 1) (0 1 2) (1 0 2) (0 0 3)) 
+     (stream-take 10 (stream-enumerate nats nats nats)))
+    (test '((0 0 0 0) (0 0 0 1) (1 0 0 1) (0 1 0 1) (1 1 0 1) (0 0 1 1) (2 1 0 1) (0 1 1 1) (1 0 1 1) (0 0 0 2)) 
+     (stream-take 10 (stream-enumerate nats nats nats nats)))
+    (test '((0 0) (0 1) (1 0) (1 1) (2 0) (0 2) (3 0) (1 2) (4 0) (0 3)) 
+     (stream-take 10 (stream-enumerate-all nats nats)))
+    (test 397
+     ((compose length stream->list (stream-take-while
+                                    (lambda (pair)
+                                     ((compose not equal?) pair '(1 100)))))
+      (stream-enumerate nats nats)))
+    (test 1559
+     ((compose length stream->list (stream-take-while
+                                    (lambda (pair)
+                                     (not (equal? pair '(3 100))))))
+      (stream-enumerate nats nats)))
+    #;(test '((3 4 5) (4 3 5) (6 8 10) (8 6 10) (5 12 13)) 
+     (stream-take 5 (Pythagorean-triples 2)))
+    (test '((0 0) (0 1) (1 1) (0 2) (1 2) (0 3) (2 2) (1 3) (0 4) (2 3)) 
+     (stream-take 10 ((stream-enumerate-weighted +) nats nats)))
+       
+    (let* ((F (lambda (x) 
+               (not (or (divisible? x 2) (divisible? x 3) (divisible? x 5)))))
+           (O (lambda (i j)
+               (+ (* i 2) (* j 3) (* 5 i j))))
+           (pairs ((stream-enumerate-weighted O)
+                   ((stream-filter F) nats>0)
+                   ((stream-filter F) nats>0))))
+    (test '((1 1) (1 7) (1 11) (1 13) (1 17) (1 19) (1 23) (1 29) (1 31) (7 7) (1 37) (1 41) (1 43) (1 47) (1 49) (1 53) (7 11) (1 59) (1 61) (7 13))
+     (stream-take 20 pairs))
+    (test '(10 58 90 106 138 154 186 234 250 280 298 330 346 378 394 426 432 474 490 508)
+     (stream-take 20 ((stream-map (lambda (p) (apply O p))) pairs))))
+
+    (let* ((W (lambda (i j)
+               (+ (expt i 3) (expt j 3))))
+           (sums-of-cubes ((stream-enumerate-weighted W) nats>0 nats>0)))
+           ;(sums-of-cubes (stream-enumerate nats>0 nats>0))) ; no answer
+     (letrec ((F (lambda (s)
+                  (let ((c (stream-car s)) 
+                        (o (stream-cadr s)))
+                   (delay-force
+                    (cond
+                     ((equal? (apply W c) (apply W o)) 
+                      (stream-cons (list (apply W c) c o) (F (stream-cdr s))))
+                     (else (F (stream-cdr s)))))))))
+      (test '((1729 (9 10) (1 12)) 
+              (4104 (9 15) (2 16)) 
+              (13832 (18 20) (2 24)) 
+              (20683 (19 24) (10 27)) 
+              (32832 (18 30) (4 32)) 
+              (39312 (15 33) (2 34)) 
+              (40033 (16 33) (9 34)) 
+              (46683 (27 30) (3 36)) 
+              (64232 (26 36) (17 39)) 
+              (65728 (31 33) (12 40)))
+       (stream-take 10 (F sums-of-cubes)))
+     ))
+
+    (let* ((W (lambda (i j)
+               (+ (expt i 2) (expt j 2))))
+           (sums-of-squares ((stream-enumerate-weighted W) nats>0 nats>0)))
+           ;(sums-of-squares (stream-enumerate nats>0 nats>0))) ; no answer
+     (letrec ((F (lambda (s)
+                  (let ((c (stream-car s)) 
+                        (o (stream-cadr s))
+                        (p (stream-caddr s)))
+                   (delay-force
+                    (cond
+                     ((and
+                       (equal? (apply W c) (apply W o))
+                       (equal? (apply W o) (apply W p)))
+                      (stream-cons (list (apply W c) c o p) (F (stream-cdr s))))
+                     (else (F (stream-cdr s)))))))))
+      (test '((325 (10 15) (6 17) (1 18)) 
+              (425 (13 16) (8 19) (5 20)) 
+              (650 (17 19) (11 23) (5 25)) 
+              (725 (14 23) (10 25) (7 26)) 
+              (845 (19 22) (13 26) (2 29)) 
+              (850 (15 25) (11 27) (3 29)) 
+              (925 (21 22) (14 27) (5 30)) 
+              (1025 (20 25) (8 31) (1 32)) 
+              (1105 (23 24) (12 31) (9 32)) 
+              (1105 (12 31) (9 32) (4 33)))
+       (stream-take 10 (F sums-of-squares)))
+     ))
+
+    (test '(0 1/2 3/2 3 5 15/2 21/2 14 18 45/2)
+      (stream-take 10 ((integral-series 0 1/2) nats>0)))
+
+    (test 2711510385063038184554582148025009427385145263359209457911835653221988864985065203856631678002232620534402061080494155033762462228923969700210224770791600005017667658552232805689051399234406246976720512041593001913227333944632316514825292178834480670914226933631181326179369443993712335090413341505973352373034623018114166459796277008059130410338874225517209113673093844493261493781889829680001888988051902981217140357447890238829068720653119504910093628744215647204665486215271368764890205992214158584100789379727836843458618055469396308281602497086484827205166156369130622868636103816355581577008071766425607421042367710815211492681377204744801136195752145388037905551222565006950338865474972439785427276517948920160083802494701850196289450930993500989786756629227623450997547504125743786944235336378989442868350866422076559961360245633476373744404078782269798871625909235692492153936337380781976852321135521028864887029666358636815103573661806597708801629250378129011107381444723549770115579026900117308415223069114430139561124911515279615908502358741619826114337569206590115333590236702954804045945737785248646523435453730999817283302637387981477365192509485754324325698046108815373543501964674969641254207607061371614585594212500879711236238275528886631667831326177659561704077680259694658809712578952476729742713681847788418343344912065889264690855110528316571031880257213340891027004183749607537656227436349710751525161000079099344572199316883713483291190920886855527886975531525481248000250001/1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+     (stream-ref 1000 ((solve-diffeq (integral-series 1 1/1000)) (lambda (y) y))))
+
     ))
     ))
 
