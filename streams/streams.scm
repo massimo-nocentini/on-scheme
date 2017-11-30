@@ -1,6 +1,7 @@
 
 (use test)
 (use numbers)
+(use random-bsd)
 
     (define stream-null? (compose null? force))
     (define stream-car (compose car force)) 
@@ -297,7 +298,7 @@
        (lambda (s)
         ((stream-map stream-car) (T s))))))
 
-    (define stream-enumerate
+    (define stream-enumerate-upper
      (letrec ((tuple (compose flatten list))
               (B (lambda (s r)
                   (delay-force
@@ -309,6 +310,28 @@
                             (tuple scar rcar)
                             (interleave 
                              ((stream-map (lambda (ri) (tuple scar ri))) rcdr)
+                             (B scdr rcdr)))))))))
+              (interleave (lambda (s r)
+                           (delay-force
+                            (cond
+                             ((stream-null? s) r)
+                             (else (stream-dest/car+cdr ((s (scar scdr)))
+                                    (stream-cons scar (interleave r scdr)))))))))
+      (lambda streams
+       (foldr B empty-stream streams))))
+
+    (define stream-enumerate-lower
+     (letrec ((tuple (compose flatten list))
+              (B (lambda (s r)
+                  (delay-force
+                   (cond
+                    ((stream-null? s) r)
+                    ((stream-null? r) s)
+                    (else (stream-dest/car+cdr ((s (scar scdr)) (r (rcar rcdr)))
+                           (stream-cons 
+                            (tuple scar rcar)
+                            (interleave 
+                             ((stream-map (lambda (si) (tuple si rcar))) scdr)
                              (B scdr rcdr)))))))))
               (interleave (lambda (s r)
                            (delay-force
@@ -387,12 +410,44 @@
 
     (define Pythagorean-triples
      (lambda (n)
-      (let ((F (lambda (triple) 
+      (let ((F (lambda (triple)
                 (equal? 
                  (+ (expt (car triple) n) (expt (cadr triple) n))
                  (expt (caddr triple) n))))
             (nats (stream-from 1)))
-       ((stream-filter F) (stream-enumerate nats nats nats)))))
+       ;((stream-filter F) (stream-enumerate-upper nats nats nats)))))
+       ((stream-filter F) ((stream-enumerate-weighted (lambda (i j #!optional (k 0))
+                   (abs (- (+ (expt i n) (expt j n)) (expt k n)))))  nats nats nats)))))
+
+    (define random-numbers
+     (let ((rand-update (lambda (u) (random 1000))))
+      (lambda (init)
+       (letrec ((R (stream-cons init ((stream-map rand-update) R))))
+        R))))
+
+    
+    (define stream-map-consecutive-pairs
+     (lambda (func)
+      (letrec ((P (lambda (s)
+                   (stream-cons 
+                    (func (stream-car s) (stream-cadr s)) 
+                    ;(P (stream-cdr s))))))             ; overlapping consecutive pairs
+                    (P (stream-cdr (stream-cdr s))))))) ; disjoint consecutive pairs
+       P)))
+
+
+    (define stream-montecarlo
+     (lambda (tosses)
+      (letrec ((MC (lambda (t s u)
+                    (let ((N (lambda (s u)
+                              (stream-cons (/ s (+ s u)) (MC (stream-cdr t) s u)))))
+                     (cond
+                      ((stream-car t) (N (add1 s) u))
+                      (else (N s (add1 u))))))))
+       (MC tosses 0 0))))
+
+
+
 
 ;________________________________________________________________________________
 
@@ -508,28 +563,36 @@
     (test '(1 7/10 165/238 380522285/548976276 755849325680052062216639661/1090460049411856348776491380 318738655178511632543822227346530350595387994474669640697143248267438214457834012964733985868157066661175569469393/459842677096914359400941379802880332404679211833600390612039625007123278498884893986945137648853585966630779010940)
      ((take 6) ((stream-tableau euler-transform) log2-series)))
 
-    (test '(0 1 2 3 4 5 6 7 8 9) ((take 10) (stream-enumerate nats)))
+    (test '(0 1 2 3 4 5 6 7 8 9) ((take 10) (stream-enumerate-upper nats)))
+    (test '(0 1 2 3 4 5 6 7 8 9) ((take 10) (stream-enumerate-lower nats)))
     (test '((0 0) (0 1) (1 1) (0 2) (1 2) (0 3) (2 2) (0 4) (1 3) (0 5)) 
-     ((take 10) (stream-enumerate nats nats)))
+     ((take 10) (stream-enumerate-upper nats nats)))
     (test '((0 0 0) (0 0 1) (1 0 1) (0 1 1) (1 1 1) (0 0 2) (2 1 1) (0 1 2) (1 0 2) (0 0 3)) 
-     ((take 10) (stream-enumerate nats nats nats)))
+     ((take 10) (stream-enumerate-upper nats nats nats)))
     (test '((0 0 0 0) (0 0 0 1) (1 0 0 1) (0 1 0 1) (1 1 0 1) (0 0 1 1) (2 1 0 1) (0 1 1 1) (1 0 1 1) (0 0 0 2)) 
-     ((take 10) (stream-enumerate nats nats nats nats)))
+     ((take 10) (stream-enumerate-upper nats nats nats nats)))
+    (test '((0 0) (1 0) (1 1) (2 0) (2 1) (3 0) (2 2) (4 0) (3 1) (5 0))
+     ((take 10) (stream-enumerate-lower nats nats)))
+    (test '((0 0 0) (1 0 0) (1 1 0) (2 0 0) (2 1 0) (3 0 0) (2 1 1) (4 0 0) (3 1 0) (5 0 0))
+     ((take 10) (stream-enumerate-lower nats nats nats)))
+    (test '((0 0 0 0) (1 0 0 0) (1 1 0 0) (2 0 0 0) (2 1 0 0) (3 0 0 0) (2 1 1 0) (4 0 0 0) (3 1 0 0) (5 0 0 0))
+     ((take 10) (stream-enumerate-lower nats nats nats nats)))
     (test '((0 0) (0 1) (1 0) (1 1) (2 0) (0 2) (3 0) (1 2) (4 0) (0 3)) 
      ((take 10) (stream-enumerate-all nats nats)))
     (test 397
      ((compose length stream->list (stream-take-while
                                     (lambda (pair)
                                      ((compose not equal?) pair '(1 100)))))
-      (stream-enumerate nats nats)))
+      (stream-enumerate-upper nats nats)))
     (test 1559
      ((compose length stream->list (stream-take-while
                                     (lambda (pair)
                                      (not (equal? pair '(3 100))))))
-      (stream-enumerate nats nats)))
-    #;(test '((3 4 5) (4 3 5) (6 8 10) (8 6 10) (5 12 13)) 
-     ((take 5) (Pythagorean-triples 2)))
-    (test '((0 0) (0 1) (1 1) (0 2) (1 2) (0 3) (2 2) (1 3) (0 4) (2 3)) 
+      (stream-enumerate-upper nats nats)))
+    (test '((4 3 5) (3 4 5) (8 6 10) (6 8 10) (12 5 13) (12 9 15) (15 8 17) (5 12 13) (16 12 20) (9 12 15))
+     ((take 10) (Pythagorean-triples 2)))
+    ;(test '() ((take 1) (Pythagorean-triples 3))) ; no answer because of Fermat's Last Theorem
+    (test '((0 0) (0 1) (1 1) (0 2) (1 2) (0 3) (2 2) (1 3) (0 4) (2 3))
      ((take 10) ((stream-enumerate-weighted +) nats nats)))
        
     (let* ((F (lambda (x) 
@@ -547,7 +610,7 @@
     (let* ((W (lambda (i j)
                (+ (expt i 3) (expt j 3))))
            (sums-of-cubes ((stream-enumerate-weighted W) nats>0 nats>0)))
-           ;(sums-of-cubes (stream-enumerate nats>0 nats>0))) ; no answer
+           ;(sums-of-cubes (stream-enumerate-upper nats>0 nats>0))) ; no answer
      (letrec ((F (lambda (s)
                   (let ((c (stream-car s)) 
                         (o (stream-cadr s)))
@@ -572,7 +635,7 @@
     (let* ((W (lambda (i j)
                (+ (expt i 2) (expt j 2))))
            (sums-of-squares ((stream-enumerate-weighted W) nats>0 nats>0)))
-           ;(sums-of-squares (stream-enumerate nats>0 nats>0))) ; no answer
+           ;(sums-of-squares (stream-enumerate-upper nats>0 nats>0))) ; no answer
      (letrec ((F (lambda (s)
                   (let ((c (stream-car s)) 
                         (o (stream-cadr s))
@@ -605,7 +668,7 @@
      ;(test expected (stream-ref 1000 ((ode-solve-1st (integral-series&rec 1 1/1000)) (lambda (y) y))))
      (test expected (stream-ref 1000 ((ode-solve-1st (integral-series&co 1 1/1000)) (lambda (y) y)))))
     
-    #;(test '()
+    #;(test '() ; FAILING TEST!
      (stream-ref 1000 ((ode-solve-2nd
                         (integral-series&co 2 1/1000) 
                         (integral-series&co -1 1/1000)) 
@@ -620,12 +683,17 @@
               (i (integral-i (delay-force di)))
               (di ((stream-zip-with func-i) (delay-force i) (delay-force v)))
               (dv ((stream-zip-with func-v) (delay-force v) (delay-force i))))
-      (test '()
+      (test '() ; FAILING TEST!
        (map (lambda (p)
              (list (exact->inexact (car p)) (exact->inexact (cadr p))))
         ((take 500) ((stream-zip-with list) v i))))))
 
-
+    (let* ((cesaro (stream-map-consecutive-pairs 
+                    (lambda (n m) (equal? (gcd n m) 1))))
+           (pi ((stream-map (lambda (p) (sqrt (/ 6 p))))
+                (stream-montecarlo (cesaro (random-numbers 1))))))
+     (test '() ; FAILING TEST!
+      ((take 1000) pi)))
 
     ))
     ))
