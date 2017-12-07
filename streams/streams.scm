@@ -185,7 +185,7 @@
                       (apply C (cons (shift-first streams) streams))))))
          (apply C (list s)))))))
 
-    (define make/list->stream
+    (define list->
      (lambda (tail)
       (letrec ((L (lambda (l)
                    (delay-force
@@ -194,8 +194,8 @@
                      (else (stream-cons (car l) (L (cdr l)))))))))
        L)))
 
-    (define list->stream (make/list->stream stream-empty))
-    (define list->poly (make/list->stream stream-zero))
+    (define list->stream (list-> stream-empty))
+    (define list->poly (list-> stream-zero))
 
     (define stream-append
      (letrec ((S (lambda (r s)
@@ -241,6 +241,7 @@
       (I s (stream-from 1)))))
 
     (define add-series (stream-zip-with +))
+    (define sub-series (stream-zip-with -))
 
     (define scale-series 
      (lambda (a)
@@ -256,9 +257,20 @@
                                             (mul-series scdr I)))))
         I))))
 
-    (define division-series
+    (define division-series&inversion
      (lambda (num denum)
       (mul-series num (inverse-series denum))))
+
+    (define division-series
+     (lambda (α β)
+      (stream-dest/car+cdr ((α (a α-cdr))
+                            (β (b β-cdr)))
+       (cond
+        ((and (zero? a) (zero? b)) (division-series α-cdr β-cdr))
+        (else (let ((q (/ a b)))
+               (stream-cons q (division-series 
+                               (sub-series α-cdr ((scale-series q) β-cdr)) 
+                               β))))))))
 
     (define integral-series&co
      (lambda (init dt)
@@ -460,7 +472,6 @@
                     (P (stream-cdr (stream-cdr s))))))) ; disjoint consecutive pairs
        P)))
 
-
     (define stream-montecarlo
      (lambda (tosses)
       (letrec ((MC (lambda (t s u)
@@ -477,16 +488,6 @@
        (stream-cons 
         (list dcar) 
         ((stream-zip-with cons) dcdr (riordan-array (mul-series d h) h))))))
-
-    (define pascal-riordan-array
-     (let* ((d stream-ones)
-            (h d))
-      (riordan-array d h)))
-
-    (define ?-riordan-array
-     (let* ((d stream-ones)
-            (h (stream-from 1)))
-      (riordan-array d h)))
      
     (define formalvar-series 
      (lambda (n)
@@ -504,11 +505,22 @@
               (F (stream-cons 1 (add-series F (mul-series t F)))))
       F))
 
-    (define catalan-riordan-array
-     (riordan-array catalan-series catalan-series))
+    (define compose-series
+     (lambda (α β)
+      (stream-dest/car+cdr ((α (a αs))
+                            (β (b βs)))
+       (cond ; non-exhaustive cond
+        ((zero? b) (stream-cons a (mul-series βs (compose-series αs β))))
+        (else (error "compose"))))))
 
-    (define fibonacci-riordan-array
-     (riordan-array fibonacci-series catalan-series))
+    (define revert-series
+     (lambda (α)
+      (stream-dest/car+cdr ((α (α₀ αs)))
+       (cond
+        ((zero? α₀)
+         (letrec ((R (stream-cons 0 (inverse-series (compose-series αs R)))))
+          R))
+        (else (error "revert"))))))
 
 ;________________________________________________________________________________
 
@@ -608,13 +620,19 @@
        ((take 10) (inverse-series non-unary-series)))
       (test '(1 0 0 0 0 0 0 0 0 0) 
        ((take 10) (mul-series non-unary-series (inverse-series non-unary-series)))))
-     (test '(0 1 0 1/3 0 2/15 0 17/315 0 62/2835) ((take 10) tangent-series)) 
+     (test '(0 1 0 1/3 0 2/15 0 17/315 0 62/2835) ((take 10) tangent-series))
      (test '(1 0 -6 0 12 0 -8 0 0 0) 
       ((take 10) ((expt-series 3) (list->poly '(1 0 -2)))))
      (test '(1 1 1 1 1 1 1 1 1 1) 
       ((take 10) (division-series stream-one (list->poly '(1 -1)))))
-     (test '(1 2 3 4 5 6 7 8 9 10) 
+     (test '(0 1 1 2 3 5 8 13 21 34)
+      ((take 10) (division-series (formalvar-series 1) (list->poly '(1 -1 -1)))))
+     (test '(1 2 3 4 5 6 7 8 9 10)
       ((take 10) (division-series stream-one ((expt-series 2) (list->poly '(1 -1))))))
+     (test '(0 1 -1 1 -1 1 -1 1 -1 1)
+      ((take 10) (revert-series (stream-cons 0 stream-ones))))
+     (test '(0 1 -1 1 -1 1 -1 1 -1 1)
+      ((take 10) (division-series (formalvar-series 1) (list->poly '(1 1)))))
      (test '((1) 
              (1 1) 
              (1 2 1) 
@@ -625,7 +643,7 @@
              (1 7 21 35 35 21 7 1) 
              (1 8 28 56 70 56 28 8 1) 
              (1 9 36 84 126 126 84 36 9 1)) 
-      ((take 10) pascal-riordan-array)) 
+      ((take 10) (riordan-array stream-ones stream-ones))) 
      (test '((1) 
              (1 1) 
              (1 3 1) 
@@ -636,7 +654,7 @@
              (1 28 126 210 165 66 13 1) 
              (1 36 210 462 495 286 91 15 1) 
              (1 45 330 924 1287 1001 455 120 17 1)) 
-      ((take 10) ?-riordan-array))
+      ((take 10) (riordan-array stream-ones (stream-from 1))))
      (test '(1 1 2 5 14 42 132 429 1430 4862) ((take 10) catalan-series))
      (test '((1) 
              (1 1) 
@@ -648,7 +666,7 @@
              (429 429 297 165 75 27 7 1) 
              (1430 1430 1001 572 275 110 35 8 1) 
              (4862 4862 3432 2002 1001 429 154 44 9 1)) 
-      ((take 10) catalan-riordan-array))
+      ((take 10) (riordan-array catalan-series catalan-series)))
      (test '(1 1 2 3 5 8 13 21 34 55) ((take 10) fibonacci-series))
      (test '((1) 
              (1 1) 
@@ -660,7 +678,7 @@
              (21 248 235 150 73 27 7 1) 
              (34 762 741 493 258 108 35 8 1) 
              (55 2440 2406 1644 903 410 152 44 9 1)) 
-      ((take 10) fibonacci-riordan-array))
+      ((take 10) (riordan-array fibonacci-series catalan-series)))
      (test '((1) 
              (1 1) 
              (2 2 1) 
@@ -719,7 +737,6 @@
      ((take 10) (euler-transform log2-series)))
     (test '(1 7/10 165/238 380522285/548976276 755849325680052062216639661/1090460049411856348776491380 318738655178511632543822227346530350595387994474669640697143248267438214457834012964733985868157066661175569469393/459842677096914359400941379802880332404679211833600390612039625007123278498884893986945137648853585966630779010940)
      ((take 6) ((stream-tableau euler-transform) log2-series)))
-
     (test '(0 1 2 3 4 5 6 7 8 9) ((take 10) (stream-enumerate-upper nats)))
     (test '(0 1 2 3 4 5 6 7 8 9) ((take 10) (stream-enumerate-lower nats)))
     (test '((0 0) (0 1) (1 1) (0 2) (1 2) (0 3) (2 2) (0 4) (1 3) (0 5)) 
