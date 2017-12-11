@@ -238,7 +238,15 @@
                    (stream-dest/car+cdr ((s (scar scdr))
                                          (n (ncar ncdr)))
                     (stream-cons (/ scar ncar) (I scdr ncdr))))))
-      (I s (stream-from 1)))))
+       (stream-cons 0 (I s (stream-from 1))))))
+
+    (define derivative-series
+     (lambda (s)
+      (letrec ((D (lambda (s n)
+                   (stream-dest/car+cdr ((s (scar scdr))
+                                         (n (ncar ncdr)))
+                    (stream-cons (* scar ncar) (D scdr ncdr))))))
+       (D (stream-cdr s) (stream-from 1)))))
 
     (define add-series (stream-zip-with +))
     (define sub-series (stream-zip-with -))
@@ -317,6 +325,19 @@
      (letrec ((summands (lambda (n) 
                          (stream-cons (/ 1 n) ((stream-map -) (summands (add1 n)))))))
       ((stream-cumulatives +) (summands 1))))
+
+    (define sqrt-series
+     (lambda (α)
+      (delay-force
+       (cond 
+        ((and (zero? (stream-car α)) (zero? (stream-cadr α)))
+         (stream-cons 0 (sqrt-series (stream-cddr α))))
+        (else (letrec ((Q (add-series
+                           stream-one
+                           (integrate-series (division-series 
+                                              (derivative-series α) 
+                                              ((scale-series 2) (delay-force Q))))))) 
+               Q))))))
 
     (define euler-transform
      (lambda (s)
@@ -573,9 +594,9 @@
                                 ((stream-zip-with *) S (stream-repeat 2)) 
                                 ((stream-zip-with *) S (stream-repeat 3)) 
                                 ((stream-zip-with *) S (stream-repeat 5)))))
-             (exponential-series (stream-cons 1 (integrate-series exponential-series)))
-             (cosine-series (stream-cons 1 (integrate-series ((scale-series -1) sine-series))))
-             (sine-series (stream-cons 0 (integrate-series cosine-series)))
+             (exponential-series (add-series stream-one (integrate-series (delay-force exponential-series))))
+             (cosine-series (add-series stream-one ((scale-series -1) (integrate-series (delay-force sine-series)))))
+             (sine-series (integrate-series (delay-force cosine-series)))
             )
      (test '(0 1 2 3 4 5 6 7 8 9) ((take 10) nats))
      (test '(0 1 1 2 3 5 8 13 21 34) ((take 10) fibs))
@@ -599,6 +620,9 @@
     (test '(1 2 3 4 5 6 6 8 9 10 10 12 12 12 15 15 16 18 18 18 20 20 20 24 24 24 24 25 27 30 30 30 30 30 30 32 36 36 36 36 36 36 40 40 40 40 45 45 45 48) 
      ((take 50) S))
     (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880) ((take 10) exponential-series))
+    (test '(1 1/2 3/8 5/16 35/128 63/256 231/1024 429/2048 6435/32768 12155/65536) 
+     ((take 10) (sqrt-series stream-ones)))
+    (test ((take 10) stream-ones) ((take 10) ((compose (expt-series 2) sqrt-series) stream-ones)))
     (test '(1 0 -1/2 0 1/24 0 -1/720 0 1/40320 0) ((take 10) cosine-series))
     (test '(0 1 0 -1/6 0 1/120 0 -1/5040 0 1/362880) ((take 10) sine-series))
     (test '(1 2 3 4 5 6 7 8 9 10) ((take 10) (mul-series stream-ones stream-ones)))
@@ -608,6 +632,7 @@
                           (mul-series cosine-series cosine-series)))
           (fibs>0 (stream-cdr fibs))
           (tangent-series (division-series sine-series cosine-series))
+          (arctan-series (integrate-series (division-series stream-one (list->poly '(1 0 1)))))
          )
      (test '(1 0 0 0 0 0 0 0 0 0) ((take 10) sine2+cosine2))
      (test '(1 -1 0 0 0 0 0 0 0 0) ((take 10) (inverse-series stream-ones)))
@@ -621,6 +646,12 @@
       (test '(1 0 0 0 0 0 0 0 0 0) 
        ((take 10) (mul-series non-unary-series (inverse-series non-unary-series)))))
      (test '(0 1 0 1/3 0 2/15 0 17/315 0 62/2835) ((take 10) tangent-series))
+     (test '(0 1 0 -1/3 0 1/5 0 -1/7 0 1/9) ((take 10) arctan-series))
+     (test ((take 10) stream-zero)
+      ((take 10) 
+       ((stream-zip-with -) 
+        (division-series sine-series cosine-series) ; tangent-series
+        (revert-series arctan-series)))) ; (equal? ((compose T arctan-series) x) x) ↔ (equal? T tangent-series)
      (test '(1 0 -6 0 12 0 -8 0 0 0) 
       ((take 10) ((expt-series 3) (list->poly '(1 0 -2)))))
      (test '(1 1 1 1 1 1 1 1 1 1) 
@@ -656,6 +687,11 @@
              (1 45 330 924 1287 1001 455 120 17 1)) 
       ((take 10) (riordan-array stream-ones (stream-from 1))))
      (test '(1 1 2 5 14 42 132 429 1430 4862) ((take 10) catalan-series))
+    (letrec (; again looking for Catalan numbers
+             (tree (stream-cons 0 forest))
+             (lst (stream-cons 1 lst))
+             (forest (compose-series (delay-force lst) (delay-force tree))))
+     (test '(0 1 1 2 5 14 42 132 429 1430) ((take 10) tree)))
      (test '((1) 
              (1 1) 
              (2 2 1) 
