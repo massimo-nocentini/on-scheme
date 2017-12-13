@@ -4,22 +4,25 @@
 ;(use random-bsd)
 
     (define map-with-index
-     (lambda (f #!optional (s 1))
+     (lambda (f s)
       (lambda (lst)
        (letrec ((M (lambda (l n)
                     (cond
                      ((null? l) '())
                      (else (cons 
-                            ((f n) (car l)) (M (cdr l) (add1 n))))))))
+                            ((f n) (car l)) 
+                            (M (cdr l) (add1 n))))))))
         (M lst s)))))
 
     (define stream-null? (compose null? force))
+    ;(define stream-car (compose car force))
     (define stream-car (compose 
                         (lambda (i) 
                          (cond
                           ((pair? i) (car i))
                           (else i))) 
                         force)) 
+    ;(define stream-cdr (compose cdr force))
     (define stream-cdr (compose 
                         (lambda (i) 
                          (cond
@@ -298,7 +301,7 @@
                       ((and (promise? a) (promise? b)) (mul-series a b))
                       ((and (promise? a) (number? b)) ((scale-series b) a))
                       ((and (number? a) (promise? b)) ((scale-series a) b))
-                      ((and (number? a) (number? b)) (* a b))
+                      ((and (number? a) (number? b)) (stream-const (* a b)))
                       (else (error "mul-series" "f₀ not a number" 
                              ((compose stream->list (stream-take 10)) a) b)))))
                    (lambda (a)
@@ -581,12 +584,11 @@
      (letrec ((C (lambda (α β)
                   (stream-dest/car+cdr ((α (a αs))
                                         (β (b βs)))
-                   (cond
-                    ((equal? b 0)           ; univariate series
-                     (stream-cons a (mul-series (C αs β) βs)))
-                    ((equal? b stream-zero) ; bivariate series
-                     (stream-cons (stream-const a) (mul-series* (C αs β) βs)))
-                    (else (error "compose-series" "β₀ neither 0 nor stream-zero" b)))))))
+                   (let ((mul (cond
+                               ((equal? b 0) mul-series)            ; univariate series
+                               ((equal? b stream-zero) mul-series*) ; bivariate series
+                               (else (error "compose-series" "β₀ neither 0 nor stream-zero" b)))))
+                    (stream-cons a (mul (C αs β) βs)))))))
       C))
 
     (define revert-series
@@ -744,7 +746,7 @@
                   (compose-series ; multivariate
                    (division-series stream-one (list->poly '(1 -1)))
                    (list->poly `( ,(list->poly '()) ,(list->poly '(1 1))))))))
-      ((map-with-index take) rows)))
+      ((map-with-index take 1) rows)))
      (test '((1) 
              (1 1) 
              (1 3 1) 
