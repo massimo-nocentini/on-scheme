@@ -4,8 +4,18 @@
 ;(use random-bsd)
 
     (define stream-null? (compose null? force))
-    (define stream-car (compose car force)) 
-    (define stream-cdr (compose cdr force))
+    (define stream-car (compose 
+                        (lambda (i) 
+                         (cond
+                          ((pair? i) (car i))
+                          (else i))) 
+                        force)) 
+    (define stream-cdr (compose 
+                        (lambda (i) 
+                         (cond
+                          ((pair? i) (cdr i))
+                          (else i))) 
+                        force))
     (define stream-cadr (compose stream-car stream-cdr))
     (define stream-caddr (compose stream-car stream-cdr stream-cdr))
 
@@ -143,14 +153,26 @@
                     (apply Z (map stream-cdr streams))))))
        Z)))
 
+    (define stream-zip-with-$
+     (lambda (op)
+      (letrec ((Z (lambda (α β)
+                   (stream-dest/car+cdr ((α (a αs))
+                                         (β (b βs)))
+                    (cond
+                     ((and (promise? a) (promise? b)) (stream-cons (Z a b) (Z αs βs)))
+                     ((promise? a) (stream-cons (Z a (stream-const b)) (Z αs βs)))
+                     ((promise? b) (stream-cons (Z (stream-const a) b) (Z αs βs)))
+                     (else (stream-cons (op a b) (Z αs βs))))))))
+       Z)))
+
     (define stream-convolution
      (lambda (func scale comb)
       (letrec ((C (lambda (s r)
                    (stream-dest/car+cdr ((s (scar scdr))
                                          (r (rcar rcdr)))
-                    (stream-cons (func scar rcar) (comb 
-                                                   ((scale scar) rcdr) 
-                                                   (C scdr r)))))))
+                    (stream-cons 
+                     (func scar rcar)
+                     (comb ((scale scar) rcdr) (C scdr r)))))))
        C)))
 
     (define expt-series
@@ -188,10 +210,9 @@
     (define list->
      (lambda (tail)
       (letrec ((L (lambda (l)
-                   (delay-force
                     (cond 
                      ((null? l) tail)
-                     (else (stream-cons (car l) (L (cdr l)))))))))
+                     (else (stream-cons (car l) (L (cdr l))))))))
        L)))
 
     (define list->stream (list-> stream-empty))
@@ -256,7 +277,30 @@
       (lambda (s)
        ((stream-zip-with *) (stream-repeat a) s))))
 
-    (define mul-series (stream-convolution * scale-series add-series))
+    (define mul-series-$ (stream-convolution * scale-series add-series))
+
+    (define mul-series
+     ;(lambda series
+      (letrec ((M (stream-convolution
+                   (lambda (a b)
+                    (delay-force
+                     (cond
+                      ((and (promise? a) (promise? b)) (mul-series-$ a b))
+                      ((and (promise? a) (number? b)) ((scale-series b) a))
+                      ((and (number? a) (promise? b)) ((scale-series a) b))
+                      ((and (number? a) (number? b)) (* a b))
+                      (else (error 
+                             "mul-series" 
+                             "f₀ not a number" 
+                             ((compose stream->list (stream-take 10)) a) b)))))
+                   (lambda (a)
+                    (lambda (b)
+                     (cond
+                     ((number? a) ((stream-map (scale-series a)) b))
+                     (else ((stream-zip-with mul-series-$) a b)))))
+                   (stream-zip-with add-series))))
+       ;(foldr M stream-one series))))
+    M))
 
     (define inverse-series
      (lambda (s)
@@ -527,12 +571,20 @@
       F))
 
     (define compose-series
-     (lambda (α β)
-      (stream-dest/car+cdr ((α (a αs))
-                            (β (b βs)))
-       (cond ; non-exhaustive cond
-        ((zero? b) (stream-cons a (mul-series βs (compose-series αs β))))
-        (else (error "compose"))))))
+     ;(lambda series
+      (letrec ((C (lambda (α β)
+                   (stream-dest/car+cdr ((α (a αs))
+                                         (β (b βs)))
+                    (cond
+                     ((or (equal? b stream-zero) (equal? b 0))
+                      ;(cond
+                      ; ((number? a) 
+                       (stream-cons (stream-const a) (mul-series (C αs β) βs))) ; swapped!!
+                       ;(else (error ))))
+                       ;(else (stream-cons (stream-const (stream-car a)) (mul-series (C αs β) βs))))) ; swapped!!
+                     (else (error "compose")))))))
+       C))
+       ;(foldr C (formalvar-series 1) series))))
 
     (define revert-series
      (lambda (α)
@@ -675,6 +727,22 @@
              (1 8 28 56 70 56 28 8 1) 
              (1 9 36 84 126 126 84 36 9 1)) 
       ((take 10) (riordan-array stream-ones stream-ones))) 
+
+     (let ((geometric (division-series stream-one (list->poly '(1 -1)))))
+      (test '()
+        (let ((rows ((take 10) (compose-series ; multivariate
+                                geometric
+                                (list->poly `( ,(list->poly '()) ,(list->poly '(1 1))))))))
+         (map (take 10) rows)
+        )))
+
+       #;(map 
+       (lambda (α)
+             (display α)
+             (cond
+              ((promise? α) ((take 10) α))
+              (else α))))
+
      (test '((1) 
              (1 1) 
              (1 3 1) 
@@ -687,6 +755,13 @@
              (1 45 330 924 1287 1001 455 120 17 1)) 
       ((take 10) (riordan-array stream-ones (stream-from 1))))
      (test '(1 1 2 5 14 42 132 429 1430 4862) ((take 10) catalan-series))
+     (test '(0 1 1 2 5 14 42 132 429 1430) 
+      ((take 10) 
+       (division-series 
+        (sub-series 
+         stream-one 
+         (sqrt-series (list->poly '(1 -4)))) 
+        (list->poly '(2)))))
     (letrec (; again looking for Catalan numbers
              (tree (stream-cons 0 forest))
              (lst (stream-cons 1 lst))
