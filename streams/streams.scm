@@ -3,6 +3,16 @@
 (use numbers)
 ;(use random-bsd)
 
+    (define map-with-index
+     (lambda (f #!optional (s 1))
+      (lambda (lst)
+       (letrec ((M (lambda (l n)
+                    (cond
+                     ((null? l) '())
+                     (else (cons 
+                            ((f n) (car l)) (M (cdr l) (add1 n))))))))
+        (M lst s)))))
+
     (define stream-null? (compose null? force))
     (define stream-car (compose 
                         (lambda (i) 
@@ -277,30 +287,27 @@
       (lambda (s)
        ((stream-zip-with *) (stream-repeat a) s))))
 
-    (define mul-series-$ (stream-convolution * scale-series add-series))
+    (define mul-series (stream-convolution * scale-series add-series))
 
-    (define mul-series
-     ;(lambda series
+    (define mul-series*
+     (lambda series
       (letrec ((M (stream-convolution
                    (lambda (a b)
                     (delay-force
                      (cond
-                      ((and (promise? a) (promise? b)) (mul-series-$ a b))
+                      ((and (promise? a) (promise? b)) (mul-series a b))
                       ((and (promise? a) (number? b)) ((scale-series b) a))
                       ((and (number? a) (promise? b)) ((scale-series a) b))
                       ((and (number? a) (number? b)) (* a b))
-                      (else (error 
-                             "mul-series" 
-                             "f₀ not a number" 
+                      (else (error "mul-series" "f₀ not a number" 
                              ((compose stream->list (stream-take 10)) a) b)))))
                    (lambda (a)
                     (lambda (b)
                      (cond
-                     ((number? a) ((stream-map (scale-series a)) b))
-                     (else ((stream-zip-with mul-series-$) a b)))))
+                      ((number? a) ((stream-map (scale-series a)) b))
+                      (else ((stream-zip-with mul-series) a b)))))
                    (stream-zip-with add-series))))
-       ;(foldr M stream-one series))))
-    M))
+       (foldr M stream-one series))))
 
     (define inverse-series
      (lambda (s)
@@ -571,20 +578,16 @@
       F))
 
     (define compose-series
-     ;(lambda series
-      (letrec ((C (lambda (α β)
-                   (stream-dest/car+cdr ((α (a αs))
-                                         (β (b βs)))
-                    (cond
-                     ((or (equal? b stream-zero) (equal? b 0))
-                      ;(cond
-                      ; ((number? a) 
-                       (stream-cons (stream-const a) (mul-series (C αs β) βs))) ; swapped!!
-                       ;(else (error ))))
-                       ;(else (stream-cons (stream-const (stream-car a)) (mul-series (C αs β) βs))))) ; swapped!!
-                     (else (error "compose")))))))
-       C))
-       ;(foldr C (formalvar-series 1) series))))
+     (letrec ((C (lambda (α β)
+                  (stream-dest/car+cdr ((α (a αs))
+                                        (β (b βs)))
+                   (cond
+                    ((equal? b 0)           ; univariate series
+                     (stream-cons a (mul-series (C αs β) βs)))
+                    ((equal? b stream-zero) ; bivariate series
+                     (stream-cons (stream-const a) (mul-series* (C αs β) βs)))
+                    (else (error "compose-series" "β₀ neither 0 nor stream-zero" b)))))))
+      C))
 
     (define revert-series
      (lambda (α)
@@ -727,22 +730,21 @@
              (1 8 28 56 70 56 28 8 1) 
              (1 9 36 84 126 126 84 36 9 1)) 
       ((take 10) (riordan-array stream-ones stream-ones))) 
-
-     (let ((geometric (division-series stream-one (list->poly '(1 -1)))))
-      (test '()
-        (let ((rows ((take 10) (compose-series ; multivariate
-                                geometric
-                                (list->poly `( ,(list->poly '()) ,(list->poly '(1 1))))))))
-         (map (take 10) rows)
-        )))
-
-       #;(map 
-       (lambda (α)
-             (display α)
-             (cond
-              ((promise? α) ((take 10) α))
-              (else α))))
-
+    (test '((1) 
+            (1 1) 
+            (1 2 1) 
+            (1 3 3 1) 
+            (1 4 6 4 1) 
+            (1 5 10 10 5 1) 
+            (1 6 15 20 15 6 1) 
+            (1 7 21 35 35 21 7 1) 
+            (1 8 28 56 70 56 28 8 1) 
+            (1 9 36 84 126 126 84 36 9 1))
+     (let ((rows ((take 10) 
+                  (compose-series ; multivariate
+                   (division-series stream-one (list->poly '(1 -1)))
+                   (list->poly `( ,(list->poly '()) ,(list->poly '(1 1))))))))
+      ((map-with-index take) rows)))
      (test '((1) 
              (1 1) 
              (1 3 1) 
