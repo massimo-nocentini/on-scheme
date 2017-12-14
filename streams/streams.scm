@@ -302,7 +302,7 @@
                       ((and (promise? a) (number? b)) ((scale-series b) a))
                       ((and (number? a) (promise? b)) ((scale-series a) b))
                       ((and (number? a) (number? b)) (stream-const (* a b)))
-                      (else (error "mul-series" "f₀ not a number" 
+                      (else (error "mul-series" "f₀ not a number"
                              ((compose stream->list (stream-take 10)) a) b)))))
                    (lambda (a)
                     (lambda (b)
@@ -581,15 +581,19 @@
       F))
 
     (define compose-series
-     (letrec ((C (lambda (α β)
-                  (stream-dest/car+cdr ((α (a αs))
-                                        (β (b βs)))
-                   (let ((mul (cond
-                               ((equal? b 0) mul-series)            ; univariate series
-                               ((equal? b stream-zero) mul-series*) ; bivariate series
-                               (else (error "compose-series" "β₀ neither 0 nor stream-zero" b)))))
-                    (stream-cons a (mul (C αs β) βs)))))))
-      C))
+     (lambda (α β)
+      (delay-force
+       (let-values (((M B) (cond
+                           ((equal? (stream-car β) 0)            
+                            (values mul-series identity))       ; univariate series
+                           ((equal? (stream-car β) stream-zero)  
+                            (values mul-series* stream-const))  ; bivariate series
+                           (else (error "compose-series" "β₀ neither 0 nor stream-zero" β₀)))))
+        (letrec ((C (lambda (α β)
+                     (stream-dest/car+cdr ((α (a αs))
+                                           (β (b βs)))
+                      (stream-cons (B a) (M (C αs β) βs))))))
+         (C α β))))))
 
     (define revert-series
      (lambda (α)
@@ -747,6 +751,70 @@
                    (division-series stream-one (list->poly '(1 -1)))
                    (list->poly `( ,(list->poly '()) ,(list->poly '(1 1))))))))
       ((map-with-index take 1) rows)))
+    (test '((1 0 0 0 0 0 0 0 0 0) 
+            (1 1 1 1 1 1 1 1 1 1) 
+            (1 2 3 4 5 6 7 8 9 10) 
+            (1 3 6 10 15 21 28 36 45 55) 
+            (1 4 10 20 35 56 84 120 165 220) 
+            (1 5 15 35 70 126 210 330 495 715) 
+            (1 6 21 56 126 252 462 792 1287 2002) 
+            (1 7 28 84 210 462 924 1716 3003 5005) 
+            (1 8 36 120 330 792 1716 3432 6435 11440) 
+            (1 9 45 165 495 1287 3003 6435 12870 24310))
+     (let ((rows ((take 10)
+                  (compose-series ; multivariate
+                   (division-series stream-one (list->poly '(1 -1)))
+                   (list->poly `( ,(list->poly '()) ,stream-ones))))))
+      (map (take 10) rows)))
+    (test '((1 1 1 1 1 1 1 1 1 1) 
+            (0 1 2 3 4 5 6 7 8 9) 
+            (0 0 1 3 6 10 15 21 28 36) 
+            (0 0 0 1 4 10 20 35 56 84) 
+            (0 0 0 0 1 5 15 35 70 126) 
+            (0 0 0 0 0 1 6 21 56 126) 
+            (0 0 0 0 0 0 1 7 28 84) 
+            (0 0 0 0 0 0 0 1 8 36) 
+            (0 0 0 0 0 0 0 0 1 9) 
+            (0 0 0 0 0 0 0 0 0 1))
+     (let ((rows ((take 10) ; a pure bivariate gf definition of a Riordan array
+                  ((stream-zip-with mul-series) 
+                   stream-ones 
+                   (compose-series ; multivariate
+                    (division-series stream-one (list->poly '(1 -1)))
+                    (list->poly `( ,(list->poly '()) ,(stream-cons 0 stream-ones))))))))
+      (map (take 10) rows)))
+    (test '((1 0 0 0 0 0 0 0 0 0) 
+            (0 1 1 1 1 1 1 1 1 1) 
+            (0 0 1 2 3 4 5 6 7 8) 
+            (0 0 0 1 3 6 10 15 21 28) 
+            (0 0 0 0 1 4 10 20 35 56) 
+            (0 0 0 0 0 1 5 15 35 70) 
+            (0 0 0 0 0 0 1 6 21 56) 
+            (0 0 0 0 0 0 0 1 7 28) 
+            (0 0 0 0 0 0 0 0 1 8) 
+            (0 0 0 0 0 0 0 0 0 1))
+     (let ((rows ((take 10)
+                  (compose-series ; multivariate
+                   (division-series stream-one (list->poly '(1 -1)))
+                   (list->poly `( ,(list->poly '()) ,(stream-cons 0 stream-ones)))))))
+      (map (take 10) rows)))
+    (test '((1 0 0 0 0 0 0 0 0 0) 
+            (0 1 1 1 1 1 1 1 1 1) 
+            (0 0 2 4 6 8 10 12 14 16) 
+            (0 0 0 2 6 12 20 30 42 56) 
+            (0 0 0 0 2 8 20 40 70 112) 
+            (0 0 0 0 0 2 10 30 70 140) 
+            (0 0 0 0 0 0 2 12 42 112) 
+            (0 0 0 0 0 0 0 2 14 56) 
+            (0 0 0 0 0 0 0 0 2 16) 
+            (0 0 0 0 0 0 0 0 0 2))
+     (let ((rows ((take 10)
+                  (compose-series ; multivariate
+                   (division-series stream-one (list->poly '(1 -1)))
+                   (list->poly `( ,(list->poly '()) 
+                                  ,(stream-cons 0 stream-ones) 
+                                  ,(stream-cons 0 (stream-cons 0 stream-ones))))))))
+      (map (take 10) rows)))
      (test '((1) 
              (1 1) 
              (1 3 1) 
