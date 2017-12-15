@@ -393,6 +393,15 @@
                                               ((scale-series 2) (delay-force Q))))))) 
                Q))))))
 
+    (define exp-series
+     (lambda (α)
+      (letrec ((Y (delay-force 
+                   (add-series 
+                    stream-one
+                    (integrate-series 
+                     (mul-series Y (derivative-series α)))))))
+       Y)))
+
     (define euler-transform
      (lambda (s)
       (let ((n-1 (stream-car s))
@@ -583,12 +592,11 @@
     (define compose-series
      (lambda (α β)
       (delay-force
-       (let-values (((M B) (cond
-                           ((equal? (stream-car β) 0)            
-                            (values mul-series identity))       ; univariate series
-                           ((equal? (stream-car β) stream-zero)  
-                            (values mul-series* stream-const))  ; bivariate series
-                           (else (error "compose-series" "β₀ neither 0 nor stream-zero" β₀)))))
+       (let-values (((M B) (let ((β₀ (stream-car β)))
+                            (cond
+                             ((equal? β₀ 0)            (values mul-series identity))       ; univariate series
+                             ((equal? β₀ stream-zero)  (values mul-series* stream-const))  ; bivariate series
+                             (else (error "compose-series" "β₀ neither 0 nor stream-zero" β₀))))))
         (letrec ((C (lambda (α β)
                      (stream-dest/car+cdr ((α (a αs))
                                            (β (b βs)))
@@ -680,10 +688,29 @@
      (test '(1 1 2 6 30 240 3120 65520 2227680 122522400) ((take 10) fibs-produlatives)))
     (test '(1 2 3 4 5 6 6 8 9 10 10 12 12 12 15 15 16 18 18 18 20 20 20 24 24 24 24 25 27 30 30 30 30 30 30 32 36 36 36 36 36 36 40 40 40 40 45 45 45 48) 
      ((take 50) S))
-    (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880) ((take 10) exponential-series))
     (test '(1 1/2 3/8 5/16 35/128 63/256 231/1024 429/2048 6435/32768 12155/65536) 
      ((take 10) (sqrt-series stream-ones)))
     (test ((take 10) stream-ones) ((take 10) ((compose (expt-series 2) sqrt-series) stream-ones)))
+
+    ; PER IL MIO TESORO <3
+    (test '(1 0 0 0 0 0 0 0 0 0) ((take 10) (exp-series stream-one)))
+    (test '(1 0 0 0 0 0 0 0 0 0) ((take 10) (exp-series stream-zero)))
+    (test '(1 0 0 0 0 0 0 0 0 0) ((take 10) (compose-series exponential-series stream-zero)))
+    (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880) 
+     ((take 10) exponential-series))
+    (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880) 
+     ((take 10) (exp-series `(0 ,@stream-one))))
+    (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880) 
+     ((take 10) (exp-series (list->poly '(1 1)))))
+    (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880) 
+     ((take 10) (compose-series exponential-series (list->poly '(0 1)))))
+    (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880) 
+     ((take 10) (exp-series (list->poly '(0 1)))))
+    (test '(1 1 3/2 13/6 73/24 167/40 4051/720 37633/5040 43817/4480 4596553/362880)
+     ((take 10) (exp-series stream-ones)))
+    (test '(1 1 3/2 13/6 73/24 167/40 4051/720 37633/5040 43817/4480 4596553/362880)
+     ((take 10) (compose-series exponential-series `(0 ,@stream-ones))))
+
     (test '(1 0 -1/2 0 1/24 0 -1/720 0 1/40320 0) ((take 10) cosine-series))
     (test '(0 1 0 -1/6 0 1/120 0 -1/5040 0 1/362880) ((take 10) sine-series))
     (test '(1 2 3 4 5 6 7 8 9 10) ((take 10) (mul-series stream-ones stream-ones)))
@@ -735,21 +762,21 @@
              (1 7 21 35 35 21 7 1) 
              (1 8 28 56 70 56 28 8 1) 
              (1 9 36 84 126 126 84 36 9 1)) 
-      ((take 10) (riordan-array stream-ones stream-ones))) 
-    (test '((1) 
-            (1 1) 
-            (1 2 1) 
-            (1 3 3 1) 
-            (1 4 6 4 1) 
-            (1 5 10 10 5 1) 
-            (1 6 15 20 15 6 1) 
-            (1 7 21 35 35 21 7 1) 
-            (1 8 28 56 70 56 28 8 1) 
-            (1 9 36 84 126 126 84 36 9 1))
-     (let ((rows ((take 10) 
-                  (compose-series ; multivariate
-                   (division-series stream-one (list->poly '(1 -1)))
-                   (list->poly `( ,(list->poly '()) ,(list->poly '(1 1))))))))
+      ((take 10) (riordan-array stream-ones stream-ones)))
+    (let ((rows ((take 10)
+                 (compose-series ; multivariate
+                  (division-series stream-one (list->poly '(1 -1)))
+                  (list->poly `( ,(list->poly '()) ,(list->poly '(1 1))))))))
+     (test '((1) 
+             (1 1) 
+             (1 2 1) 
+             (1 3 3 1) 
+             (1 4 6 4 1) 
+             (1 5 10 10 5 1) 
+             (1 6 15 20 15 6 1) 
+             (1 7 21 35 35 21 7 1) 
+             (1 8 28 56 70 56 28 8 1) 
+             (1 9 36 84 126 126 84 36 9 1))
       ((map-with-index take 1) rows)))
     (test '((1 0 0 0 0 0 0 0 0 0) 
             (1 1 1 1 1 1 1 1 1 1) 
@@ -781,7 +808,8 @@
                    stream-ones 
                    (compose-series ; multivariate
                     (division-series stream-one (list->poly '(1 -1)))
-                    (list->poly `( ,(list->poly '()) ,(stream-cons 0 stream-ones))))))))
+                    (list->poly `( ,(list->poly '()) ,(stream-cons 0 stream-ones)))
+                   )))))
       (map (take 10) rows)))
     (test '((1 0 0 0 0 0 0 0 0 0) 
             (0 1 1 1 1 1 1 1 1 1) 
