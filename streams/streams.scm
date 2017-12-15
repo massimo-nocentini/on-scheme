@@ -30,7 +30,8 @@
                           (else i))) 
                         force))
     (define stream-cadr (compose stream-car stream-cdr))
-    (define stream-caddr (compose stream-car stream-cdr stream-cdr))
+    (define stream-cddr (compose stream-cdr stream-cdr))
+    (define stream-caddr (compose stream-car stream-cddr))
 
     (define-syntax stream-cons
      (syntax-rules ()
@@ -115,8 +116,6 @@
     (define stream-from
      (lambda (n)
       (stream-cons n (stream-from (add1 n)))))
-
-; ******************************************************************************
 
     (define divisible?
      (lambda (x y)
@@ -395,12 +394,15 @@
 
     (define exp-series
      (lambda (α)
-      (letrec ((Y (delay-force 
-                   (add-series 
-                    stream-one
-                    (integrate-series 
-                     (mul-series Y (derivative-series α)))))))
-       Y)))
+      (cond
+       (((compose not equal?) 0 (stream-car α)) 
+        (error "exp-series" "α₀ not zero"))
+       (else (letrec ((Y (delay-force 
+                          (add-series 
+                           stream-one
+                           (integrate-series 
+                            (mul-series Y (derivative-series α)))))))
+              Y)))))
 
     (define euler-transform
      (lambda (s)
@@ -682,9 +684,7 @@
      (test '(0 1 2 4 7 12 20 33 54 88) ((take 10) fibs-cumulatives)) ; https://oeis.org/A000071
      (test-assert (equal?
                    ((take 10) fibs-cumulatives)
-                   ((take 10) ((stream-zip-with -) 
-                                    ((compose stream-cdr stream-cdr) fibs) 
-                                    stream-ones))))
+                   ((take 10) ((stream-zip-with -) (stream-cddr fibs) stream-ones))))
      (test '(1 1 2 6 30 240 3120 65520 2227680 122522400) ((take 10) fibs-produlatives)))
     (test '(1 2 3 4 5 6 6 8 9 10 10 12 12 12 15 15 16 18 18 18 20 20 20 24 24 24 24 25 27 30 30 30 30 30 30 32 36 36 36 36 36 36 40 40 40 40 45 45 45 48) 
      ((take 50) S))
@@ -693,7 +693,7 @@
     (test ((take 10) stream-ones) ((take 10) ((compose (expt-series 2) sqrt-series) stream-ones)))
 
     ; PER IL MIO TESORO <3
-    (test '(1 0 0 0 0 0 0 0 0 0) ((take 10) (exp-series stream-one)))
+    (test-error ((take 10) (exp-series stream-one)))
     (test '(1 0 0 0 0 0 0 0 0 0) ((take 10) (exp-series stream-zero)))
     (test '(1 0 0 0 0 0 0 0 0 0) ((take 10) (compose-series exponential-series stream-zero)))
     (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880) 
@@ -701,13 +701,13 @@
     (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880) 
      ((take 10) (exp-series `(0 ,@stream-one))))
     (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880) 
-     ((take 10) (exp-series (list->poly '(1 1)))))
+     ((take 10) (exp-series (list->poly '(0 1)))))
     (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880) 
      ((take 10) (compose-series exponential-series (list->poly '(0 1)))))
     (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880) 
      ((take 10) (exp-series (list->poly '(0 1)))))
     (test '(1 1 3/2 13/6 73/24 167/40 4051/720 37633/5040 43817/4480 4596553/362880)
-     ((take 10) (exp-series stream-ones)))
+     ((take 10) (exp-series `(0 ,@stream-ones))))
     (test '(1 1 3/2 13/6 73/24 167/40 4051/720 37633/5040 43817/4480 4596553/362880)
      ((take 10) (compose-series exponential-series `(0 ,@stream-ones))))
 
