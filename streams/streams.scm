@@ -773,6 +773,9 @@
              (1 8 28 56 70 56 28 8 1) 
              (1 9 36 84 126 126 84 36 9 1)) 
       ((take 10) (riordan-array stream-ones stream-ones)))
+    (test ; h(t) = tA(h(t)) where h(t) = 1/(1-t), aka the Pascal comp inverse
+     ((take 10) (division-series (formalvar-series 1) `(1 1 ,@stream-zero)))
+     ((take 10) (revert-series `(0 ,@stream-ones))))
     (let ((rows ((take 10)
                  (compose-series ; multivariate
                   (division-series stream-one (list->poly '(1 -1)))
