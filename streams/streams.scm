@@ -45,10 +45,9 @@
     (define-syntax stream-dest/car+cdr 
      (syntax-rules ()
       ((stream-dest/car+cdr ((s (a d)) ...) body ...) 
-       (delay-force 
-        (let ((a (stream-car s)) ...
-              (d (stream-cdr s)) ...)
-         body ...)))))
+       (let ((a (stream-car s)) ...
+             (d (stream-cdr s)) ...)
+        body ...))))
 
     (define stream-empty (delay-force '()))
 
@@ -114,9 +113,8 @@
      (lambda (s)
       (cond
        ((stream-null? s) '())
-       (else (cons 
-              (stream-car s) 
-              (stream->list (stream-cdr s)))))))
+       (else (stream-dest/car+cdr ((s (scar scdr)))
+              (cons scar (stream->list scdr)))))))
 
     (define stream-from
      (lambda (n)
@@ -144,13 +142,14 @@
     (define eratosthenes
      (lambda (s)
       (stream-dest/car+cdr ((s (prime primes)))
-       (stream-cons prime (eratosthenes 
-                           ((stream-filter (compose not (divisable-by? prime))) 
-                            primes))))))
+       (stream-cons
+        prime
+        (eratosthenes
+         ((stream-filter (compose not (divisable-by? prime))) primes))))))
 
     (define stream-repeat
      (lambda (n)
-      (letrec ((R (stream-cons n R))) 
+      (letrec ((R (stream-cons n R)))
        R)))
 
     (define stream-zero (stream-repeat 0))
@@ -170,26 +169,15 @@
                     (apply Z (map stream-cdr streams))))))
        Z)))
 
-    (define stream-zip-with-$
-     (lambda (op)
-      (letrec ((Z (lambda (α β)
-                   (stream-dest/car+cdr ((α (a αs))
-                                         (β (b βs)))
-                    (cond
-                     ((and (promise? a) (promise? b)) (stream-cons (Z a b) (Z αs βs)))
-                     ((promise? a) (stream-cons (Z a (stream-const b)) (Z αs βs)))
-                     ((promise? b) (stream-cons (Z (stream-const a) b) (Z αs βs)))
-                     (else (stream-cons (op a b) (Z αs βs))))))))
-       Z)))
-
     (define stream-convolution
      (lambda (func scale comb)
       (letrec ((C (lambda (s r)
-                   (stream-dest/car+cdr ((s (scar scdr))
-                                         (r (rcar rcdr)))
-                    (stream-cons 
-                     (func scar rcar)
-                     (comb ((scale scar) rcdr) (C scdr r)))))))
+                   (delay-force
+                    (stream-dest/car+cdr ((s (scar scdr))
+                                          (r (rcar rcdr)))
+                     (stream-cons 
+                      (func scar rcar)
+                      (comb ((scale scar) rcdr) (C scdr r))))))))
        C)))
 
     (define expt-series
@@ -205,12 +193,12 @@
     (define make-prime?
      (lambda (primes)
       (let ((prime? (lambda (n)
-                     (letrec ((P (lambda (ps)
-                                  (let ((p (stream-car ps)))
+                     (letrec ((P (lambda (α)
+                                  (let ((p (stream-car α)))
                                    (cond
                                     ((> p (sqrt n)) #t)
                                     ((divisible? n p) #f)
-                                    (else (P (stream-cdr ps))))))))
+                                    (else (P (stream-cdr α))))))))
                       (P primes)))))
        prime?)))
 
@@ -237,10 +225,11 @@
 
     (define stream-append
      (letrec ((S (lambda (r s)
-                  (cond
-                   ((stream-null? r) s)
-                   (else (stream-dest/car+cdr ((r (rcar rcdr)))
-                          (stream-cons rcar (S rcdr s))))))))
+                  (delay-force
+                   (cond
+                    ((stream-null? r) s)
+                    (else (stream-dest/car+cdr ((r (rcar rcdr)))
+                           (stream-cons rcar (S rcdr s)))))))))
       (lambda streams
        (delay-force
         (cond
@@ -274,17 +263,19 @@
     (define integrate-series
      (lambda (s)
       (letrec ((I (lambda (s n)
-                   (stream-dest/car+cdr ((s (scar scdr))
-                                         (n (ncar ncdr)))
-                    (stream-cons (/ scar ncar) (I scdr ncdr))))))
+                   (delay-force
+                    (stream-dest/car+cdr ((s (scar scdr))
+                                          (n (ncar ncdr)))
+                     (stream-cons (/ scar ncar) (I scdr ncdr)))))))
        (stream-cons 0 (I s (stream-from 1))))))
 
     (define derivative-series
      (lambda (s)
       (letrec ((D (lambda (s n)
-                   (stream-dest/car+cdr ((s (scar scdr))
-                                         (n (ncar ncdr)))
-                    (stream-cons (* scar ncar) (D scdr ncdr))))))
+                   (delay-force
+                    (stream-dest/car+cdr ((s (scar scdr))
+                                          (n (ncar ncdr)))
+                     (stream-cons (* scar ncar) (D scdr ncdr)))))))
        (D (stream-cdr s) (stream-from 1)))))
 
     (define add-series (stream-zip-with +))
@@ -319,25 +310,28 @@
 
     (define inverse-series
      (lambda (s)
-      (stream-dest/car+cdr ((s (scar scdr)))
-       (letrec ((I (stream-cons (/ 1 scar) ((scale-series (/ -1 scar)) 
-                                            (mul-series scdr I)))))
-        I))))
+      (delay-force
+       (stream-dest/car+cdr ((s (scar scdr)))
+        (letrec ((I (stream-cons (/ 1 scar) ((scale-series (/ -1 scar)) 
+                                             (mul-series scdr I)))))
+         I)))))
 
     (define division-series&inversion
      (lambda (num denum)
-      (mul-series num (inverse-series denum))))
+      (delay-force
+       (mul-series num (inverse-series denum)))))
 
     (define division-series
      (lambda (α β)
-      (stream-dest/car+cdr ((α (a α-cdr))
-                            (β (b β-cdr)))
-       (cond
-        ((and (zero? a) (zero? b)) (division-series α-cdr β-cdr))
-        (else (let ((q (/ a b)))
-               (stream-cons q (division-series 
-                               (sub-series α-cdr ((scale-series q) β-cdr)) 
-                               β))))))))
+      (delay-force
+       (stream-dest/car+cdr ((α (a α-cdr))
+                             (β (b β-cdr)))
+        (cond
+         ((and (zero? a) (zero? b)) (division-series α-cdr β-cdr))
+         (else (let ((q (/ a b)))
+                (stream-cons q (division-series 
+                                (sub-series α-cdr ((scale-series q) β-cdr)) 
+                                β)))))))))
 
     (define integral-series&co
      (lambda (init dt)
@@ -401,14 +395,15 @@
 
     (define exp-series
      (lambda (α)
-      (cond
-       (((compose not equal?) 0 (stream-car α)) 
-        (error "exp-series" "α₀ not zero"))
-       (else (letdelay ((Y (add-series 
-                            stream-one
-                            (integrate-series 
-                             (mul-series Y (derivative-series α))))))
-              Y)))))
+      (delay-force
+       (cond
+        (((compose not equal?) 0 (stream-car α)) 
+         (error "exp-series" "α₀ not zero"))
+        (else (letdelay ((Y (add-series 
+                             stream-one
+                             (integrate-series 
+                              (mul-series Y (derivative-series α))))))
+               Y))))))
 
     (define euler-transform
      (lambda (s)
@@ -558,28 +553,31 @@
     (define stream-map-consecutive-pairs
      (lambda (func)
       (letrec ((P (lambda (s)
-                   (stream-cons 
-                    (func (stream-car s) (stream-cadr s)) 
-                    ;(P (stream-cdr s))))))             ; overlapping consecutive pairs
-                    (P (stream-cdr (stream-cdr s))))))) ; disjoint consecutive pairs
-       P)))
+                   (delay-force
+                    (stream-cons 
+                     (func (stream-car s) (stream-cadr s))
+                     ;(P (stream-cdr s))))))             ; overlapping consecutive pairs
+                     (P (stream-cdr (stream-cdr s)))))))) ; disjoint consecutive pairs
+        P)))
 
     (define stream-montecarlo
      (lambda (tosses)
       (letrec ((MC (lambda (t s u)
-                    (let ((N (lambda (s u)
-                              (stream-cons (/ s (+ s u)) (MC (stream-cdr t) s u)))))
-                     (cond
-                      ((stream-car t) (N (add1 s) u))
-                      (else (N s (add1 u))))))))
+                    (delay-force
+                     (let ((N (lambda (s u)
+                               (stream-cons (/ s (+ s u)) (MC (stream-cdr t) s u)))))
+                      (cond
+                       ((stream-car t) (N (add1 s) u))
+                       (else (N s (add1 u)))))))))
        (MC tosses 0 0))))
 
     (define riordan-array
      (lambda (d h)
-      (stream-dest/car+cdr ((d (dcar dcdr)))
-       (stream-cons 
-        (list dcar) 
-        ((stream-zip-with cons) dcdr (riordan-array (mul-series d h) h))))))
+      (delay-force
+       (stream-dest/car+cdr ((d (dcar dcdr)))
+        (stream-cons 
+         (list dcar) 
+         ((stream-zip-with cons) dcdr (riordan-array (mul-series d h) h)))))))
      
     (define formalvar-series 
      (lambda (n)
@@ -613,14 +611,14 @@
 
     (define revert-series
      (lambda (α)
-      (stream-dest/car+cdr ((α (α₀ αs)))
-       (cond
-        ((equal? α₀ 0)
-         (letrec ((R (stream-cons 0 (inverse-series (compose-series αs R)))))
-          R))
-        (else (error "revert"))))))
-
-
+      (delay-force
+       (stream-dest/car+cdr ((α (α₀ αs)))
+        (cond
+         ((equal? α₀ 0)
+          (letrec ((R (stream-cons 0 (inverse-series 
+                                      (compose-series αs R)))))
+           R))
+         (else (error "revert-series" "α₀ not zero" α₀)))))))
 
 ;________________________________________________________________________________
 
@@ -634,10 +632,10 @@
              (evens ((stream-filter even?) seq))
              (multiples-of-5 ((stream-filter (divisable-by? 5)) seq))
              (nats (stream-from 0))
-             (nats>0 (stream-cdr (stream-from 0)))
+             (nats>0 (stream-cdr nats))
+             (primes (eratosthenes (stream-cdr nats>0)))
              (no-7s ((stream-filter (compose not (divisable-by? 7))) nats))
              (fibs (fib-gen 0 1))
-             (primes (eratosthenes (stream-from 2)))
              (frac/1-7 (radix-expand 1 7 10))
              (frac/13-7 (radix-expand 13 7 10))
              (frac/3-8 (radix-expand 3 8 10))
@@ -655,7 +653,8 @@
     (test first-10-nats ((compose stream->list list->stream) first-10-nats)) ; therefore `identity`
     (test '(0 1 1 2 3 5 8 13 21 34) ((take 10) fibs))
     (test '(2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97 101 103 107 109 113 127 131 137 139 149 151 157 163 167 173 179 181 191 193 197 199 211 223 227 229 233 239 241 251 257 263 269 271 277 281 283 293 307 311 313 317 331 337 347 349 353 359 367 373 379 383 389 397 401 409 419 421 431 433 439 443 449 457 461 463 467 479 487 491 499 503 509 521 523 541)
-     ((take 100) primes))
+     ((take 100) primes)
+     )
     (test '(1 1 1 1 1 1 1 1 1 1) ((take 10) stream-ones))
     (test '(1 4 2 8 5 7 1 4 2 8 5 7 1 4 2 8 5 7 1 4) ; 1/7 \sim 0.142..
      ((take 20) frac/1-7))
@@ -663,21 +662,17 @@
      ((take 20) frac/13-7))
     (test '(3 7 5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0) ; 3/8 = 0.375
      ((take 20) frac/3-8))
-    (letdelay ((nats (stream-cons 0 ((stream-zip-with +) stream-ones nats)))
-               (fibs (stream-cons 0 (stream-cons 1 ((stream-zip-with +) fibs (stream-cdr fibs)))))
-               (squares (stream-cons 1 ((stream-zip-with *) squares (stream-repeat 2))))
-               (primes (stream-cons 2 ((stream-filter (make-prime? primes)) (stream-from 3))))
-               (doubles (stream-cons 1 ((stream-zip-with +) doubles doubles)))
-               (factorials (stream-cons 1 ((stream-zip-with *) factorials nats>0)))
-               (S (stream-cons 1 ((stream-merge <)
-                                  ((stream-zip-with *) S (stream-repeat 2)) 
-                                  ((stream-zip-with *) S (stream-repeat 3)) 
-                                  ((stream-zip-with *) S (stream-repeat 5)))))
-               (exponential-series (add-series stream-one (integrate-series exponential-series)))
-               (cosine-series (add-series 
-                               stream-one 
-                               ((scale-series -1) (integrate-series sine-series))))
-               (sine-series (integrate-series cosine-series))
+    (letrec ((nats (stream-cons 0 ((stream-zip-with +) stream-ones nats)))
+             (fibs (stream-cons 0 (stream-cons 1 ((stream-zip-with +) fibs (stream-cdr fibs)))))
+             (fibs>0 (delay-force (stream-cdr fibs))) ; `delay-force` is mandatory because `fibs>0` is bound within a `letrec` and refers to `fibs`
+             (squares (stream-cons 1 ((stream-zip-with *) squares (stream-repeat 2))))
+             (primes (stream-cons 2 ((stream-filter (make-prime? primes)) (stream-from 3))))
+             (doubles (stream-cons 1 ((stream-zip-with +) doubles doubles)))
+             (factorials (stream-cons 1 ((stream-zip-with *) factorials nats>0)))
+             (S (stream-cons 1 ((stream-merge <)
+                                ((stream-zip-with *) S (stream-repeat 2)) 
+                                ((stream-zip-with *) S (stream-repeat 3)) 
+                                ((stream-zip-with *) S (stream-repeat 5)))))
             )
      (test '(0 1 2 3 4 5 6 7 8 9) ((take 10) nats))
      (test '(0 1 1 2 3 5 8 13 21 34) ((take 10) fibs))
@@ -701,48 +696,42 @@
     (test '(1 1/2 3/8 5/16 35/128 63/256 231/1024 429/2048 6435/32768 12155/65536) 
      ((take 10) (sqrt-series stream-ones)))
     (test ((take 10) stream-ones) ((take 10) ((compose (expt-series 2) sqrt-series) stream-ones)))
-
-    ; PER IL MIO TESORO <3
-    (test-error ((take 10) (exp-series stream-one)))
-    (test '(1 0 0 0 0 0 0 0 0 0) ((take 10) (exp-series stream-zero)))
-    (test '(1 0 0 0 0 0 0 0 0 0) ((take 10) (compose-series exponential-series stream-zero)))
-    (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880) 
-     ((take 10) exponential-series))
-    (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880) 
-     ((take 10) (exp-series `(0 ,@stream-one))))
-    (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880) 
-     ((take 10) (exp-series (list->poly '(0 1)))))
-    (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880) 
-     ((take 10) (compose-series exponential-series (list->poly '(0 1)))))
-    (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880) 
-     ((take 10) (exp-series (list->poly '(0 1)))))
-    (test '(1 1 3/2 13/6 73/24 167/40 4051/720 37633/5040 43817/4480 4596553/362880)
-     ((take 10) (exp-series `(0 ,@stream-ones))))
-    (test '(1 1 3/2 13/6 73/24 167/40 4051/720 37633/5040 43817/4480 4596553/362880)
-     ((take 10) (compose-series exponential-series `(0 ,@stream-ones))))
-
-    (test '(1 0 -1/2 0 1/24 0 -1/720 0 1/40320 0) ((take 10) cosine-series))
-    (test '(0 1 0 -1/6 0 1/120 0 -1/5040 0 1/362880) ((take 10) sine-series))
     (test '(1 2 3 4 5 6 7 8 9 10) ((take 10) (mul-series stream-ones stream-ones)))
     (test '(0 1 3 6 10 15 21 28 36 45) ((take 10) (mul-series nats stream-ones)))
+
+    (letdelay ((exponential-series (add-series 
+                                    stream-one 
+                                    (integrate-series exponential-series)))
+               (cosine-series (add-series 
+                               stream-one 
+                               ((scale-series -1) (integrate-series sine-series))))
+               (sine-series (integrate-series cosine-series)))
+     (test-error ((take 10) (exp-series stream-one)))
+     (test '(1 0 0 0 0 0 0 0 0 0) ((take 10) (exp-series stream-zero)))
+     (test '(1 0 0 0 0 0 0 0 0 0) ((take 10) (compose-series exponential-series stream-zero)))
+     (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880) 
+      ((take 10) exponential-series))
+     (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880) 
+      ((take 10) (exp-series `(0 ,@stream-one))))
+     (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880) 
+      ((take 10) (exp-series (list->poly '(0 1)))))
+     (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880) 
+      ((take 10) (compose-series exponential-series (list->poly '(0 1)))))
+     (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880) 
+      ((take 10) (exp-series (list->poly '(0 1)))))
+     (test '(1 1 3/2 13/6 73/24 167/40 4051/720 37633/5040 43817/4480 4596553/362880)
+      ((take 10) (exp-series `(0 ,@stream-ones))))
+     (test '(1 1 3/2 13/6 73/24 167/40 4051/720 37633/5040 43817/4480 4596553/362880)
+      ((take 10) (compose-series exponential-series `(0 ,@stream-ones))))
+     (test '(1 0 -1/2 0 1/24 0 -1/720 0 1/40320 0) ((take 10) cosine-series))
+     (test '(0 1 0 -1/6 0 1/120 0 -1/5040 0 1/362880) ((take 10) sine-series))
     (let ((sine2+cosine2 (add-series
                           (mul-series sine-series sine-series)
                           (mul-series cosine-series cosine-series)))
-          (fibs>0 (stream-cdr fibs))
           (tangent-series (division-series sine-series cosine-series))
           (arctan-series (integrate-series (division-series stream-one (list->poly '(1 0 1)))))
          )
      (test '(1 0 0 0 0 0 0 0 0 0) ((take 10) sine2+cosine2))
-     (test '(1 -1 0 0 0 0 0 0 0 0) ((take 10) (inverse-series stream-ones)))
-     (test '(1 -2 1 0 0 0 0 0 0 0) ((take 10) (inverse-series nats>0)))
-     (test '(1 0 0 0 0 0 0 0 0 0) ((take 10) (mul-series nats>0 (inverse-series nats>0))))
-     (test '(1 -1 -1 0 0 0 0 0 0 0) ((take 10) (inverse-series (stream-cdr fibs))))
-     (test '(1 0 0 0 0 0 0 0 0 0) ((take 10) (mul-series fibs>0 (inverse-series fibs>0))))
-     (let ((non-unary-series (stream-cons 4 nats>0)))
-      (test '(1/4 -1/16 -7/64 -33/256 -119/1024 -305/4096 -231/16384 3263/65536 26537/262144 133551/1048576) 
-       ((take 10) (inverse-series non-unary-series)))
-      (test '(1 0 0 0 0 0 0 0 0 0) 
-       ((take 10) (mul-series non-unary-series (inverse-series non-unary-series)))))
      (test '(0 1 0 1/3 0 2/15 0 17/315 0 62/2835) ((take 10) tangent-series))
      (test '(0 1 0 -1/3 0 1/5 0 -1/7 0 1/9) ((take 10) arctan-series))
      (test ((take 10) stream-zero)
@@ -750,29 +739,40 @@
        ((stream-zip-with -) 
         (division-series sine-series cosine-series) ; tangent-series
         (revert-series arctan-series)))) ; (equal? ((compose T arctan-series) x) x) ↔ (equal? T tangent-series)
-     (test '(1 0 -6 0 12 0 -8 0 0 0) 
-      ((take 10) ((expt-series 3) (list->poly '(1 0 -2)))))
-     (test '(1 1 1 1 1 1 1 1 1 1) 
-      ((take 10) (division-series stream-one (list->poly '(1 -1)))))
-     (test '(0 1 1 2 3 5 8 13 21 34)
-      ((take 10) (division-series (formalvar-series 1) (list->poly '(1 -1 -1)))))
-     (test '(1 2 3 4 5 6 7 8 9 10)
-      ((take 10) (division-series stream-one ((expt-series 2) (list->poly '(1 -1))))))
-     (test '(0 1 -1 1 -1 1 -1 1 -1 1)
-      ((take 10) (revert-series (stream-cons 0 stream-ones))))
-     (test '(0 1 -1 1 -1 1 -1 1 -1 1)
-      ((take 10) (division-series (formalvar-series 1) (list->poly '(1 1)))))
-     (test '((1) 
-             (1 1) 
-             (1 2 1) 
-             (1 3 3 1) 
-             (1 4 6 4 1) 
-             (1 5 10 10 5 1) 
-             (1 6 15 20 15 6 1) 
-             (1 7 21 35 35 21 7 1) 
-             (1 8 28 56 70 56 28 8 1) 
-             (1 9 36 84 126 126 84 36 9 1)) 
-      ((take 10) (riordan-array stream-ones stream-ones)))
+    ))
+    (test '(1 -1 0 0 0 0 0 0 0 0) ((take 10) (inverse-series stream-ones)))
+    (test '(1 -2 1 0 0 0 0 0 0 0) ((take 10) (inverse-series nats>0)))
+    (test '(1 0 0 0 0 0 0 0 0 0) ((take 10) (mul-series nats>0 (inverse-series nats>0))))
+    (test '(1 -1 -1 0 0 0 0 0 0 0) ((take 10) (inverse-series (stream-cdr fibs))))
+    (test '(1 0 0 0 0 0 0 0 0 0) ((take 10) (mul-series fibs>0 (inverse-series fibs>0))))
+    (let ((non-unary-series (stream-cons 4 nats>0)))
+     (test '(1/4 -1/16 -7/64 -33/256 -119/1024 -305/4096 -231/16384 3263/65536 26537/262144 133551/1048576) 
+      ((take 10) (inverse-series non-unary-series)))
+     (test '(1 0 0 0 0 0 0 0 0 0) 
+      ((take 10) (mul-series non-unary-series (inverse-series non-unary-series)))))
+    (test '(1 0 -6 0 12 0 -8 0 0 0) 
+     ((take 10) ((expt-series 3) (list->poly '(1 0 -2)))))
+    (test '(1 1 1 1 1 1 1 1 1 1) 
+     ((take 10) (division-series stream-one (list->poly '(1 -1)))))
+    (test '(0 1 1 2 3 5 8 13 21 34)
+     ((take 10) (division-series (formalvar-series 1) (list->poly '(1 -1 -1)))))
+    (test '(1 2 3 4 5 6 7 8 9 10)
+     ((take 10) (division-series stream-one ((expt-series 2) (list->poly '(1 -1))))))
+    (test '(0 1 -1 1 -1 1 -1 1 -1 1)
+     ((take 10) (revert-series (stream-cons 0 stream-ones))))
+    (test '(0 1 -1 1 -1 1 -1 1 -1 1)
+     ((take 10) (division-series (formalvar-series 1) (list->poly '(1 1)))))
+    (test '((1) 
+            (1 1) 
+            (1 2 1) 
+            (1 3 3 1) 
+            (1 4 6 4 1) 
+            (1 5 10 10 5 1) 
+            (1 6 15 20 15 6 1) 
+            (1 7 21 35 35 21 7 1) 
+            (1 8 28 56 70 56 28 8 1) 
+            (1 9 36 84 126 126 84 36 9 1)) 
+     ((take 10) (riordan-array stream-ones stream-ones)))
     (test ; h(t) = tA(h(t)) where h(t) = 1/(1-t), aka the Pascal comp inverse
      ((take 10) (division-series (formalvar-series 1) `(1 1 ,@stream-zero)))
      ((take 10) (revert-series `(0 ,@stream-ones))))
@@ -947,7 +947,7 @@
             (40320 12288 3428 1040 345 116 35 8 1) 
             (362880 95616 22572 5768 1661 519 161 44 9 1))
       ((take 10) (riordan-array factorials factorials)))
-     )
+     
     (test '(1 3/2 17/12 577/408 665857/470832) ((take 5) (stream-sqrt 2)))
     (test '(4 8/3 52/15 304/105 1052/315 10312/3465 147916/45045 135904/45045 2490548/765765 44257352/14549535) 
      ((take 10) pi-series))
