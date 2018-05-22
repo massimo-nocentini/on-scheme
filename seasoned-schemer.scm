@@ -235,14 +235,14 @@
                         ((eq? a atom) d)
                         (else (cons a (R d keep-searching)))))
                       (else (try
-                             ((skip (cons (R a (make-skipper skip a)) d))
-                              (else (cons a (R d keep-searching))))))))
+                             (skip (cons (R a (make-skipper skip a)) d))
+                             (else (cons a (R d keep-searching)))))))
                     (else (keep-searching))))))
        (try 
-        ((skip (R sexp (make-skipper skip sexp)))
-         (else => (lambda (previous) 
-                   (display previous) 
-                   sexp)))))))
+        (skip (R sexp (make-skipper skip sexp)))
+        (else => (lambda (previous) 
+                  (display previous) 
+                  sexp))))))
 
     ) ; end of module `seasoned-schemer`
 

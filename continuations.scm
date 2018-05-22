@@ -20,7 +20,7 @@
      (define apply/cc
       (lambda (λ-sexp . args)
        (match args ; non-exhaustive matching to signal a mistake at call-time
-        ((arg ... (last ...)) 
+        ((arg ... (last ...)) ; here both `arg` and `last` are lists in the sense of `match`
          (letcc cont (apply λ-sexp (append arg last (list cont))))))))
 
     (define-syntax escape
@@ -39,20 +39,22 @@
 
     (define-syntax dbind/car+cdr
      (syntax-rules (else)
-      ((dbind/car+cdr sexp ((a d) pair-sexp) (else null-sexp))
+      ((dbind/car+cdr sexp ((a d) pair-sexp) ... (else null-sexp))
        (match sexp 
         (() null-sexp)
-        ((a . d) pair-sexp)))))
+        ((a . d) pair-sexp) ...))))
 
     (define-syntax try
      (syntax-rules (else =>)
-      ((try ((skip alpha) ...
-             (else beta)))
+      ((try 
+        (skip alpha) ...
+        (else beta))
        (letcc success
         (letcc skip (success alpha)) ...
         beta))
-      ((try ((skip alpha) ...
-             (else => beta)))
+      ((try 
+        (skip alpha) ...
+        (else => beta))
        (letcc success
         (let ((outputs (list (letcc skip (success alpha)) ...)))
          (beta outputs))))
@@ -62,47 +64,11 @@
         (letcc cont (success (λ-sexp arg ... cont))) ...
         beta))))
 
-    (define-syntax lambda/cc
-     (syntax-rules (=>)
-      ((lambda/cc cont => L args body ...)
-       (lambda (cont)
-        (letrec ((L (lambda args body ...))) L)))
-      ((lambda/cc cont => sexp)
-       (lambda (cont) sexp))))
-
-     (define-syntax try-cps
-      (syntax-rules (else in =>)
-       ((try 
-         (receiver => consumer) ...
-         (else cont in else-receiver => else-consumer))
-        (letcc success
-         (letcc skip 
-          (let ((val (receiver skip)))
-           (success (consumer val)))) ...
-         (else-consumer (else-receiver cont))))
-       ((try 
-         (receiver => consumer) ...
-         (else beta))
-        (letcc success
-         (letcc skip 
-          (let ((val (receiver skip)))
-           (success (consumer val)))) ...
-         beta))
-      ))
-
-    #;(define-syntax values&thunk
-     (syntax-rules ()
-      ((values&thunk arg ...) 
-       (lambda () (values arg ...)))))
 
     (define values&thunk
      (lambda (f . args)
       (lambda ()
        (apply f args))))
 
-    (define-syntax λ
-     (syntax-rules ()
-      ((λ args sexp body ...) 
-       (lambda args sexp body ...))))
 
 ) ; end of module `continuations`

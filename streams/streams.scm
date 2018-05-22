@@ -36,40 +36,63 @@
 
     (define-syntax stream-cons
      (syntax-rules ()
-      ((stream-cons a d) (cons a (delay-force d)))))
-
-    (define-syntax stream-cons-$
-     (syntax-rules ()
-      ((stream-cons a d) (delay-force (stream-cons a d)))))
+      ((stream-cons a d) (delay-force (cons a d)))))
 
     (define-syntax letdelay
      (syntax-rules ()
       ((letdelay ((bind sexp) ...) body ...)
        (letrec ((bind (delay-force sexp)) ...) body ...))))
 
-    (define-syntax stream-dest/car+cdr 
-     (syntax-rules ()
+    (define-syntax stream-dest/car+cdr
+     (syntax-rules (? else)
       ((stream-dest/car+cdr ((s (a d)) ...) body ...) 
-       (let ((a (stream-car s)) ...
-             (d (stream-cdr s)) ...)
-        body ...))))
+       (let* ((a (stream-car s)) ...
+              (d (stream-cdr s)) ...)
+        body ...))
+      ((stream-dest/car+cdr () body ...) (begin body ...))
+      ((stream-dest/car+cdr ((s (? n) (else (a d)))
+                             (s' (? n') (else (a' d'))) ...)
+        body ...)
+       (cond
+        ((stream-null? s) n)
+        (else (stream-dest/car+cdr ((s (a d))) 
+               (stream-dest/car+cdr ((s' (? n') (else (a' d'))) ...)
+                body ...)))))))
+
+    (define-syntax stream-dest/car+cdr!
+     (syntax-rules ()
+      ((stream-dest/car+cdr! ((s (a d)) ...) body ...) 
+       (let ((dest (compose car+cdr force)))
+        (let*-values (((a d) (dest s)) ...)
+         body ...)))))
 
     (define-syntax lambda-$
      (syntax-rules ()
-      ((lambda-$ () body ...)
-       (syntax-error ))
       ((lambda-$ args body ...)
-       (lambda args (delay-force body ...)))))
+       (lambda args (delay-force (begin body ...))))))
 
     (define stream-empty
-     (letdelay ((ε '()))
-      ε))
+     (letdelay ((ε '())) ε))
+
+    (define stream-singleton
+     (lambda-$ (a)
+      (stream-cons a stream-empty)))
 
     (define stream-ref
      (lambda (n s)
       (cond
        ((zero? n) (stream-car s))
        (else (stream-ref (sub1 n) (stream-cdr s))))))
+
+    (define stream-mplus
+     (lambda-$ streams
+      (cond
+       ((null? streams) stream-empty)
+       (else (stream-dest/car+cdr ((α (a αs)))
+              (let ((streams (cond 
+                              ((stream-null? αs) streams)
+                              (else (append streams (list αs))))))
+               (stream-cons a (apply mplus streams))))))))
 
     (define stream-foldr
      (lambda (func init)
@@ -232,6 +255,12 @@
     (define list->stream    (list-> stream-empty))
     (define list->poly      (list-> stream-zero))
 
+    (define stream-append*
+     (lambda-$ (sos asos) ; which stands for 'Stream Of Streams' and 'Another Stream of Streams', respectively
+      (stream-dest/car+cdr ((sos (? asos) (else (α sos')))
+                            (α (? (stream-append* sos' asos)) (else (a αs))))
+       (stream-cons a (stream-append* (stream-cons αs sos') asos)))))
+
     (define stream-append
      (letrec ((S (lambda-$ (r s)
                   (cond
@@ -241,11 +270,8 @@
       (lambda-$ streams
        (cond
         ((null? streams) stream-empty)
-        (else
-         (call-with-values
-          (lambda () (car+cdr streams))
-          (lambda (first rest)
-           (S first (apply stream-append rest)))))))))
+        (else (let-values (((first rest) (car+cdr streams)))
+               (S first (apply stream-append rest))))))))
 
     (define stream-merge
      (lambda (pred?)
@@ -811,7 +837,7 @@
                    stream-ones 
                    (compose-series ; multivariate
                     (division-series stream-one (list->poly '(1 -1)))
-                    (list->poly `( ,(list->poly '()) ,(stream-cons-$ 0 stream-ones)))
+                    (list->poly `( ,(list->poly '()) ,(stream-cons 0 stream-ones)))
                    )))))
       (map (take 10) rows)))
     (test '((1 0 0 0 0 0 0 0 0 0) 
@@ -827,7 +853,7 @@
      (let ((rows ((take 10)
                   (compose-series ; multivariate
                    (division-series stream-one (list->poly '(1 -1)))
-                   (list->poly `( ,(list->poly '()) ,(stream-cons-$ 0 stream-ones)))))))
+                   (list->poly `( ,(list->poly '()) ,(stream-cons 0 stream-ones)))))))
       (map (take 10) rows)))
     (test '((1 0 0 0 0 0 0 0 0 0) 
             (0 1 1 1 1 1 1 1 1 1) 
@@ -843,8 +869,8 @@
                   (compose-series ; multivariate
                    (division-series stream-one (list->poly '(1 -1)))
                    (list->poly `( ,(list->poly '()) 
-                                  ,(stream-cons-$ 0 stream-ones)
-                                  ,(stream-cons-$ 0 (stream-cons-$ 0 stream-ones))))))))
+                                  ,(stream-cons 0 stream-ones)
+                                  ,(stream-cons 0 (stream-cons 0 stream-ones))))))))
       (map (take 10) rows)))
      (test '((1) 
              (1 1) 
