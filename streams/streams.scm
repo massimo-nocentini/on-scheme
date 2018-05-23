@@ -16,6 +16,7 @@
         (M lst s)))))
 
     (define stream-null? (compose null? force))
+
     ;(define stream-car (compose car force))
     (define stream-car (compose 
                         (lambda (i) 
@@ -45,19 +46,28 @@
 
     (define-syntax stream-dest/car+cdr
      (syntax-rules (? else)
+
       ((stream-dest/car+cdr ((s (a d)) ...) body ...) 
-       (let* ((a (stream-car s)) ...
+       (let* ((a (stream-car s)) ... ; inefficient because `force` will be called twice
               (d (stream-cdr s)) ...)
         body ...))
-      ((stream-dest/car+cdr () body ...) (begin body ...))
+
+      ((stream-dest/car+cdr () body ...) (begin body ...)) ; base case for `recursion`
       ((stream-dest/car+cdr ((s (? n) (else (a d)))
-                             (s' (? n') (else (a' d'))) ...)
+                             (r (? m) (else (b e))) ...)
         body ...)
        (cond
         ((stream-null? s) n)
         (else (stream-dest/car+cdr ((s (a d))) 
-               (stream-dest/car+cdr ((s' (? n') (else (a' d'))) ...)
-                body ...)))))))
+               (stream-dest/car+cdr ((r (? m) (else (b e))) ...)
+                body ...))))) 
+
+      ((stream-dest/car+cdr ((s (?) (else (a d)))
+                             (r (?) (else (b e))) ...)
+        body ...)
+       (stream-dest/car+cdr ((s (? stream-empty) (else (a d)))
+                             (r (? stream-empty) (else (b e))) ...)
+        body ...))))
 
     (define-syntax stream-dest/car+cdr!
      (syntax-rules ()
@@ -66,16 +76,16 @@
         (let*-values (((a d) (dest s)) ...)
          body ...)))))
 
-    (define-syntax lambda-$
+    (define-syntax Λ
      (syntax-rules ()
-      ((lambda-$ args body ...)
+      ((Λ args body ...)
        (lambda args (delay-force (begin body ...))))))
 
     (define stream-empty
-     (letdelay ((ε '())) ε))
+     (letdelay ((α '())) α))
 
     (define stream-singleton
-     (lambda-$ (a)
+     (Λ (a)
       (stream-cons a stream-empty)))
 
     (define stream-ref
@@ -85,36 +95,33 @@
        (else (stream-ref (sub1 n) (stream-cdr s))))))
 
     (define stream-mplus
-     (lambda-$ streams
+     (Λ streams
       (cond
        ((null? streams) stream-empty)
-       (else (stream-dest/car+cdr ((α (a αs)))
-              (let ((streams (cond 
-                              ((stream-null? αs) streams)
-                              (else (append streams (list αs))))))
-               (stream-cons a (apply mplus streams))))))))
+       (else (let-values (((α streams') (car+cdr streams)))
+              (stream-dest/car+cdr ((α (a αs)))
+               (let ((streams'' (cond
+                                 ((stream-null? αs) streams')
+                                 (else (append streams' (list αs))))))
+                (stream-cons a (apply stream-mplus streams'')))))))))
 
     (define stream-foldr
      (lambda (func init)
-      (letrec ((F (lambda-$ (s)
-                   (cond
-                    ((stream-null? s) (force init))
-                    (else (stream-dest/car+cdr ((s (scar scdr)))
-                           (func scar (F scdr))))))))
+      (letrec ((F (Λ (s)
+                   (stream-dest/car+cdr ((s (? (force init)) (else (scar scdr))))
+                    (func scar (F scdr))))))
        F)))
 
     (define stream-map
      (lambda (func)
-      (letrec ((M (lambda-$ (s)
-                   (cond 
-                    ((stream-null? s) stream-empty)
-                    (else (stream-dest/car+cdr ((s (scar scdr)))
-                           (stream-cons (func scar) (M scdr))))))))
+      (letrec ((M (Λ (s)
+                   (stream-dest/car+cdr ((s (?) (else (scar scdr))))
+                    (stream-cons (func scar) (M scdr))))))
        M)))
 
     (define stream-range
      (lambda (low high)
-      (letrec ((R (lambda-$ (low)
+      (letrec ((R (Λ (low)
                    (cond
                     ((>= low high) stream-empty)
                     (else (stream-cons low (R (add1 low))))))))
@@ -122,34 +129,30 @@
 
     (define stream-filter 
      (lambda (pred?)
-      (letrec ((F (lambda-$ (s)
-                   (cond 
-                    ((stream-null? s) stream-empty)
-                    (else (stream-dest/car+cdr ((s (a d)))
-                           (cond
-                            ((pred? a) (stream-cons a (F d)))
-                            (else (F d)))))))))
+      (letrec ((F (Λ (s)
+                   (stream-dest/car+cdr ((s (?) (else (a d))))
+                    (cond
+                     ((pred? a) (stream-cons a (F d)))
+                     (else (F d)))))))
        F)))
 
     (define stream-take
      (lambda (n)
       (lambda (s)
-       (letrec ((T (lambda-$ (i r)
+       (letrec ((T (Λ (i r)
                     (cond
-                     ((or (> i n) (stream-null? r)) stream-empty)
-                     (else (stream-dest/car+cdr ((r (rcar rcdr)))
+                     ((> i n) stream-empty)
+                     (else (stream-dest/car+cdr ((r (?) (else (rcar rcdr))))
                             (stream-cons rcar (T (add1 i) rcdr))))))))
         (T 1 s)))))
 
     (define stream->list
      (lambda (s)
-      (cond
-       ((stream-null? s) '())
-       (else (stream-dest/car+cdr ((s (scar scdr)))
-              (cons scar (stream->list scdr)))))))
+      (stream-dest/car+cdr ((s (? '()) (else (scar scdr))))
+       (cons scar (stream->list scdr)))))
 
     (define stream-from
-     (lambda-$ (n)
+     (Λ (n)
       (stream-cons n (stream-from (add1 n)))))
 
     (define divisible?
@@ -168,14 +171,14 @@
        sum)))
 
     (define fib-gen
-     (lambda-$ (a b)
+     (Λ (a b)
       (stream-cons a (fib-gen b (+ a b)))))
 
     (define eratosthenes
-     (lambda-$ (s)
+     (Λ (s)
       (stream-dest/car+cdr ((s (prime primes)))
        (stream-cons prime (eratosthenes
-                           ((stream-filter (compose not (divisable-by? prime))) 
+                           ((stream-filter (compose not (divisable-by? prime)))
                             primes))))))
 
     (define stream-repeat
@@ -187,14 +190,14 @@
     (define stream-ones (stream-repeat 1))
 
     (define stream-const
-     (lambda-$ (n)
+     (Λ (n)
       (stream-cons n stream-zero)))
 
     (define stream-one (stream-const 1))
 
     (define stream-zip-with 
      (lambda (op)
-      (letrec ((Z (lambda-$ streams
+      (letrec ((Z (Λ streams
                    (stream-cons 
                     (apply op (map stream-car streams)) 
                     (apply Z (map stream-cdr streams))))))
@@ -202,7 +205,7 @@
 
     (define stream-convolution
      (lambda (func scale comb)
-      (letrec ((C (lambda-$ (s r)
+      (letrec ((C (Λ (s r)
                    (stream-dest/car+cdr ((s (scar scdr))
                                          (r (rcar rcdr)))
                     (stream-cons 
@@ -213,7 +216,7 @@
     (define expt-series
      (lambda (n)
       (lambda (s)
-       (letrec ((E (lambda-$ (n)
+       (letrec ((E (Λ (n)
                     (cond
                      ((zero? n) stream-one)
                      (else (mul-series s (E (sub1 n))))))))
@@ -235,7 +238,7 @@
      (let ((shift-first (compose stream-cdr car)))
       (lambda (op)
        (lambda (s)
-        (letrec ((C (lambda-$ streams
+        (letrec ((C (Λ streams
                      (stream-cons
                       (apply op (map stream-car streams))
                       (apply C (cons (shift-first streams) streams))))))
@@ -243,8 +246,8 @@
 
     (define list->
      (lambda (tail)
-      (letrec ((L (lambda-$ (l)
-                   (cond 
+      (letrec ((L (Λ (l)
+                   (cond
                     ((null? l) tail)
                     (else (stream-cons (car l) (L (cdr l))))))))
        (lambda (l)
@@ -256,18 +259,16 @@
     (define list->poly      (list-> stream-zero))
 
     (define stream-append*
-     (lambda-$ (sos asos) ; which stands for 'Stream Of Streams' and 'Another Stream of Streams', respectively
+     (Λ (sos asos) ; which stands for 'Stream Of Streams' and 'Another Stream of Streams', respectively
       (stream-dest/car+cdr ((sos (? asos) (else (α sos')))
                             (α (? (stream-append* sos' asos)) (else (a αs))))
        (stream-cons a (stream-append* (stream-cons αs sos') asos)))))
 
     (define stream-append
-     (letrec ((S (lambda-$ (r s)
-                  (cond
-                   ((stream-null? r) s)
-                   (else (stream-dest/car+cdr ((r (rcar rcdr)))
-                          (stream-cons rcar (S rcdr s))))))))
-      (lambda-$ streams
+     (letrec ((S (Λ (r s)
+                  (stream-dest/car+cdr ((r (? s) (else (rcar rcdr))))
+                   (stream-cons rcar (S rcdr s))))))
+      (Λ streams
        (cond
         ((null? streams) stream-empty)
         (else (let-values (((first rest) (car+cdr streams)))
@@ -275,38 +276,34 @@
 
     (define stream-merge
      (lambda (pred?)
-      (letrec ((M (lambda-$ (s r) ; binary merge strategy
-                   (cond
-                    ((stream-null? s) r)
-                    ((stream-null? r) s)
-                    (else
-                     (let ((scar (stream-car s))
-                           (rcar (stream-car r)))
-                      (cond
-                       ((equal? (pred? scar rcar) #t) 
-                        (stream-cons scar (M (stream-cdr s) r)))
-                       (else 
-                        (stream-cons rcar (M s (stream-cdr r)))))))))))
+      (letrec ((M (Λ (s r) ; binary merge strategy
+                   (stream-dest/car+cdr ((s (? r) (else (scar scdr)))
+                                         (r (? s) (else (rcar rcdr))))
+                                         (cond
+                                          ((equal? (pred? scar rcar) #t)
+                                           (stream-cons scar (M scdr r)))
+                                          (else
+                                           (stream-cons rcar (M s rcdr))))))))
        (lambda streams
         (foldr M stream-empty streams)))))
 
     (define radix-expand 
-     (lambda-$ (num den radix)
+     (Λ (num den radix)
       (stream-cons
        (quotient (* num radix) den)
        (radix-expand (remainder (* num radix) den) den radix))))
 
     (define integrate-series
-     (lambda-$ (s)
-      (letrec ((I (lambda-$ (s n)
+     (Λ (s)
+      (letrec ((I (Λ (s n)
                    (stream-dest/car+cdr ((s (scar scdr))
                                          (n (ncar ncdr)))
                     (stream-cons (/ scar ncar) (I scdr ncdr))))))
        (stream-cons 0 (I s (stream-from 1))))))
 
     (define derivative-series
-     (lambda-$ (s)
-      (letrec ((D (lambda-$ (s n)
+     (Λ (s)
+      (letrec ((D (Λ (s n)
                    (stream-dest/car+cdr ((s (scar scdr))
                                          (n (ncar ncdr)))
                     (stream-cons (* scar ncar) (D scdr ncdr))))))
@@ -317,7 +314,7 @@
 
     (define scale-series
      (lambda (a)
-      (lambda-$ (s)
+      (Λ (s)
        ((stream-zip-with *) (stream-repeat a) s))))
 
     (define mul-series (stream-convolution * scale-series add-series))
@@ -341,7 +338,7 @@
        (foldr M stream-one series))))
 
     (define inverse-series
-     (lambda-$ (s)
+     (Λ (s)
       (stream-dest/car+cdr ((s (scar scdr)))
        (letdelay ((I (stream-cons (/ 1 scar) ((scale-series (/ -1 scar))
                                               (mul-series scdr I)))))
@@ -352,7 +349,7 @@
       (mul-series num (inverse-series denum))))
 
     (define division-series
-     (lambda-$ (α β)
+     (Λ (α β)
       (stream-dest/car+cdr ((α (a α-cdr))
                             (β (b β-cdr)))
        (cond
@@ -370,11 +367,9 @@
 
     (define integral-series&rec
      (lambda (init dt)
-      (lambda-$ (s)
-       (stream-cons init (cond
-                          ((stream-null? s) stream-empty)
-                          (else (stream-dest/car+cdr ((s (scar scdr)))
-                                 ((integral-series&rec (+ (* dt scar) init) dt) scdr))))))))
+      (Λ (s)
+       (stream-cons init (stream-dest/car+cdr ((s (?) (else (scar scdr))))
+                          ((integral-series&rec (+ (* dt scar) init) dt) scdr))))))
 
     (define ode-solve-1st
      (lambda (integral)
@@ -399,18 +394,18 @@
         guesses))))
 
     (define pi-series
-     (letrec ((summands (lambda-$ (n) 
+     (letrec ((summands (Λ (n) 
                          (stream-cons (/ 1 n) ((stream-map -) 
                                                (summands (+ n 2)))))))
       ((scale-series 4) ((stream-cumulatives +) (summands 1)))))
 
     (define log2-series
-     (letrec ((summands (lambda-$ (n) 
+     (letrec ((summands (Λ (n) 
                          (stream-cons (/ 1 n) ((stream-map -) (summands (add1 n)))))))
       ((stream-cumulatives +) (summands 1))))
 
     (define sqrt-series
-     (lambda-$ (α)
+     (Λ (α)
       (cond 
        ((and (zero? (stream-car α)) (zero? (stream-cadr α)))
         (stream-cons 0 (sqrt-series (stream-cddr α))))
@@ -422,7 +417,7 @@
               Q)))))
 
     (define exp-series
-     (lambda-$ (α)
+     (Λ (α)
       (cond
        (((compose not equal?) 0 (stream-car α)) 
         (error "exp-series" "α₀ not zero"))
@@ -433,7 +428,7 @@
               Y)))))
 
     (define euler-transform
-     (lambda-$ (s)
+     (Λ (s)
       (let ((n-1 (stream-car s))
             (n (stream-cadr s))
             (n+1 (stream-caddr s))
@@ -444,110 +439,90 @@
 
     (define stream-tableau
      (lambda (transform)
-      (letrec ((T (lambda-$ (s)
+      (letrec ((T (Λ (s)
                    (stream-cons s ((compose T transform) s)))))
        (lambda (s)
         ((stream-map stream-car) (T s))))))
 
     (define stream-enumerate-upper
      (letrec ((tuple (compose flatten list))
-              (B (lambda-$ (s r)
-                  (cond
-                   ((stream-null? s) r)
-                   ((stream-null? r) s)
-                   (else (stream-dest/car+cdr ((s (scar scdr)) (r (rcar rcdr)))
-                          (stream-cons 
-                           (tuple scar rcar)
-                           (interleave 
-                            ((stream-map (lambda (ri) (tuple scar ri))) rcdr)
-                            (B scdr rcdr))))))))
-              (interleave (lambda-$ (s r)
-                           (cond
-                            ((stream-null? s) r)
-                            (else (stream-dest/car+cdr ((s (scar scdr)))
-                                   (stream-cons scar (interleave r scdr))))))))
+              (B (Λ (s r)
+                  (stream-dest/car+cdr ((s (? r) (else (scar scdr))) 
+                                        (r (? s) (else (rcar rcdr))))
+                   (stream-cons 
+                    (tuple scar rcar)
+                    (interleave 
+                     ((stream-map (lambda (ri) (tuple scar ri))) rcdr)
+                     (B scdr rcdr))))))
+              (interleave (Λ (s r)
+                           (stream-dest/car+cdr ((s (? r) (else (scar scdr))))
+                            (stream-cons scar (interleave r scdr))))))
       (lambda streams
        (foldr B stream-empty streams))))
 
     (define stream-enumerate-lower
      (letrec ((tuple (compose flatten list))
-              (B (lambda-$ (s r)
-                  (cond
-                   ((stream-null? s) r)
-                   ((stream-null? r) s)
-                   (else (stream-dest/car+cdr ((s (scar scdr)) (r (rcar rcdr)))
-                          (stream-cons 
-                           (tuple scar rcar)
-                           (interleave 
-                            ((stream-map (lambda (si) (tuple si rcar))) scdr)
-                            (B scdr rcdr))))))))
-              (interleave (lambda-$ (s r)
-                           (cond
-                            ((stream-null? s) r)
-                            (else (stream-dest/car+cdr ((s (scar scdr)))
-                                   (stream-cons scar (interleave r scdr))))))))
+              (B (Λ (s r)
+                  (stream-dest/car+cdr ((s (? r) (else (scar scdr))) 
+                                        (r (? s) (else (rcar rcdr))))
+                   (stream-cons 
+                    (tuple scar rcar)
+                    (interleave 
+                     ((stream-map (lambda (si) (tuple si rcar))) scdr)
+                     (B scdr rcdr))))))
+              (interleave (Λ (s r)
+                           (stream-dest/car+cdr ((s (? r) (else (scar scdr))))
+                            (stream-cons scar (interleave r scdr))))))
       (lambda streams
        (foldr B stream-empty streams))))
 
     (define stream-enumerate-all
      (letrec ((tuple (compose flatten list))
-              (B (lambda-$ (s r)
-                  (cond
-                   ((stream-null? s) r)
-                   ((stream-null? r) s)
-                   (else (stream-dest/car+cdr ((s (scar scdr)) (r (rcar rcdr)))
-                          (stream-cons 
-                           (tuple scar rcar)
-                           (interleave
-                            (interleave 
-                             ((stream-map (lambda (ri) (tuple scar ri))) rcdr)
-                             (B scdr rcdr))
-                            ((stream-map (lambda (si) (tuple si rcar))) scdr))))))))
-              (interleave (lambda-$ (s r)
-                           (cond
-                            ((stream-null? s) r)
-                            (else (stream-dest/car+cdr ((s (scar scdr)))
-                                   (stream-cons scar (interleave r scdr))))))))
+              (B (Λ (s r)
+                  (stream-dest/car+cdr ((s (? r) (else (scar scdr))) 
+                                        (r (? s) (else (rcar rcdr))))
+                   (stream-cons 
+                    (tuple scar rcar)
+                    (interleave
+                     (interleave 
+                      ((stream-map (lambda (ri) (tuple scar ri))) rcdr)
+                      (B scdr rcdr))
+                     ((stream-map (lambda (si) (tuple si rcar))) scdr))))))
+              (interleave (Λ (s r)
+                           (stream-dest/car+cdr ((s (? r) (else (scar scdr))))
+                            (stream-cons scar (interleave r scdr))))))
       (lambda streams
        (foldr B stream-empty streams))))
 
     (define stream-enumerate-weighted
      (lambda (weight)
       (letrec ((make-tuple (compose flatten list))
-               (B (lambda-$ (s r)
-                   (cond
-                    ((stream-null? s) r)
-                    ((stream-null? r) s)
-                    (else (stream-dest/car+cdr ((s (scar scdr)) (r (rcar rcdr)))
-                           (stream-cons 
-                            (make-tuple scar rcar) 
-                            (interleave 
-                             ((stream-map (lambda (ri) (make-tuple scar ri))) rcdr)
-                             (B scdr rcdr))))))))
-               (interleave (lambda-$ (s r)
-                            (cond
-                             ((stream-null? s) r)
-                             ((stream-null? r) s)
-                             (else
-                              (let ((scar (stream-car s))
-                                    (rcar (stream-car r)))
-                               (cond
-                                ((< (apply weight scar) (apply weight rcar)) 
-                                 (stream-cons scar (interleave (stream-cdr s) r)))
-                                (else (stream-cons rcar (interleave s (stream-cdr r)))))))))))
-    (lambda streams
-     (foldr B stream-empty streams)))))
+               (B (Λ (s r)
+                   (stream-dest/car+cdr ((s (? r) (else (scar scdr))) 
+                                         (r (? s) (else (rcar rcdr))))
+                    (stream-cons 
+                     (make-tuple scar rcar) 
+                     (interleave 
+                      ((stream-map (lambda (ri) (make-tuple scar ri))) rcdr)
+                      (B scdr rcdr))))))
+               (interleave (Λ (s r)
+                            (stream-dest/car+cdr ((s (? r) (else (scar scdr)))
+                                                  (r (? s) (else (rcar rcdr))))
+                             (cond
+                              ((< (apply weight scar) (apply weight rcar)) 
+                               (stream-cons scar (interleave scdr r)))
+                              (else (stream-cons rcar (interleave s rcdr))))))))
+       (lambda streams
+        (foldr B stream-empty streams)))))
 
     (define stream-take-while
      (lambda (pred?)
       (letrec ((stop? (compose not pred?))
-               (W (lambda-$ (s)
-                   (cond
-                    ((stream-null? s) stream-empty)
-                    (else (let ((scar (stream-car s)))
-                           (cond
-                            ((stop? scar) (stream-cons scar stream-empty))
-                            (else (stream-cons scar (W (stream-cdr s)))))))))))
+               (W (Λ (s)
+                   (stream-dest/car+cdr ((s (?) (else (scar scdr))))
+                    (cond
+                     ((stop? scar) (stream-cons scar stream-empty))
+                     (else (stream-cons scar (W scdr))))))))
        W)))
 
     (define Pythagorean-triples
@@ -574,7 +549,7 @@
 
     (define stream-map-consecutive-pairs
      (lambda (func)
-      (letrec ((P (lambda-$ (s)
+      (letrec ((P (Λ (s)
                    (stream-cons 
                     (func (stream-car s) (stream-cadr s))
                     ;(P (stream-cdr s)))))             ; overlapping consecutive pairs
@@ -583,7 +558,7 @@
 
     (define stream-montecarlo
      (lambda (tosses)
-      (letrec ((MC (lambda-$ (t s u)
+      (letrec ((MC (Λ (t s u)
                     (let ((N (lambda (s u)
                               (stream-cons (/ s (+ s u)) (MC (stream-cdr t) s u)))))
                      (cond
@@ -592,14 +567,14 @@
        (MC tosses 0 0))))
 
     (define riordan-array
-     (lambda-$ (d h)
+     (Λ (d h)
       (stream-dest/car+cdr ((d (dcar dcdr)))
        (stream-cons 
         (list dcar) 
         ((stream-zip-with cons) dcdr (riordan-array (mul-series d h) h))))))
      
     (define formalvar-series 
-     (lambda-$ (n)
+     (Λ (n)
       (cond
        ((zero? n) stream-one)
        (else (stream-cons 0 (formalvar-series (sub1 n)))))))
@@ -614,20 +589,20 @@
       F))
 
     (define compose-series
-     (lambda-$ (α β)
+     (Λ (α β)
       (let-values (((M B) (let ((β₀ (stream-car β)))
                            (cond
                             ((equal? β₀ 0)            (values mul-series identity))       ; univariate series
                             ((equal? β₀ stream-zero)  (values mul-series* stream-const))  ; bivariate series
                             (else (error "compose-series" "β₀ neither 0 nor stream-zero" β₀))))))
-       (letrec ((C (lambda-$ (α β)
+       (letrec ((C (Λ (α β)
                     (stream-dest/car+cdr ((α (a αs))
                                           (β (b βs)))
                      (stream-cons (B a) (M (C αs β) βs))))))
         (C α β)))))
 
     (define revert-series
-     (lambda-$ (α)
+     (Λ (α)
       (stream-dest/car+cdr ((α (α₀ αs)))
        (cond
         ((equal? α₀ 0)
