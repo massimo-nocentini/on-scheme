@@ -3,7 +3,7 @@
 
     (import chicken scheme)
 
-    (use srfi-69)
+    (use srfi-69 data-structures)
 
     (define-record unionfind π rank)
 
@@ -49,6 +49,15 @@
       (let* ((U (unionfind-init))
              (↑ (unionfind-ref U))
              (≡ (unionfind-≡ U)))
-       (recv ↑ ≡))))
-) 
+       (recv U ↑ ≡))))
+
+    (define-record-printer unionfind
+     (lambda (U out)
+      (map 
+       (lambda (k) 
+        (let ((pp `(,k -> ,((unionfind-ref U) k))))
+         (display pp out)
+         (newline out))) 
+       (hash-table-keys (unionfind-π U)))))
+)
 
