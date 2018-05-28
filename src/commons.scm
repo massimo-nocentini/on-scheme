@@ -1,4 +1,6 @@
 
+;(declare (unit commons))
+
 (module commons *
 
  (import chicken scheme)
@@ -15,6 +17,7 @@
 
  (define fmap    (curry₁ map))
  (define fapply  (curry₁ apply))
+ (define ffilter (curry₁ filter))
 
  (define subscripts
   (let ((H (make-hash-table)))
