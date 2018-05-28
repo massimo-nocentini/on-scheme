@@ -47,3 +47,5 @@
    (test 4 (count)))
 
     )
+
+(test-exit)

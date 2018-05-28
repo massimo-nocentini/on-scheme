@@ -1,6 +1,9 @@
 
 
-(use continuations test) 
+(import chicken scheme)
+
+(use test)
+(use continuations) 
 
     (test-group "LETCC syntactic abstraction"
      ; simple forms with `letcc`
@@ -41,11 +44,11 @@
         (else (list 3))))
 
 
-    )) ; end of "TRY" tests group
+      )) ; end of "TRY" tests group
 
 
 
-    ;; IMPORTANT! The following ensures nightly automated tests can
+      ;; IMPORTANT! The following ensures nightly automated tests can
     ;; distinguish failure from success.  Always end tests/run.scm with this.
 (test-exit)
 

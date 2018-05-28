@@ -43,4 +43,15 @@
 
 (define symbol∼subscripts (symbol∼ subscripts))
 
+     (define eternity 
+      (lambda args 
+       (apply eternity args)))
+
+    (define-syntax dest+match/car+cdr
+     (syntax-rules (else)
+      ((dbind/car+cdr sexp ((a d) pair-sexp) ... (else null-sexp))
+       (match sexp 
+        (() null-sexp)
+        ((a . d) pair-sexp) ...))))
+
 )
