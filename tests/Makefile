@@ -14,4 +14,9 @@ continuations-test:
 	mv continuations-test executables/
 	./executables/continuations-test
 
-test-all: promise-test collatz-test continuations-test
+learning-test:
+	csc learning-test.scm
+	mv learning-test executables/
+	./executables/learning-test
+
+test-all: promise-test collatz-test continuations-test learning-test

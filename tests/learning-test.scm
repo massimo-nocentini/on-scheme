@@ -1,7 +1,8 @@
 
 
+(import chicken scheme)
 
-(use chicken test matchable) 
+(use test matchable) 
 
     (test-group "MATCHABLE"
 
@@ -34,6 +35,19 @@
      (test "matching a quoted symbol"
       'x (match '(1 x 3)
           ((1 y 3) y)))
+    )
+
+    (test-group "OUTPUT PORTS"
+
+     (let* ((str-port (open-output-string)) 
+            (result (with-output-to-port str-port 
+                     (lambda () 
+                      (display "hello world") 
+                      "succeed"))))
+      (test "hello world" (get-output-string str-port))
+      (test "succeed" result)
+      (test "succeed" (with-output-to-string (lambda () (display 'succeed)))))
+
     )
 
 (test-exit)
