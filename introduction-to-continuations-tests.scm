@@ -5,6 +5,8 @@
 (display "\n--- making `escaper` function ---\n")
 (make-escaper)
 
+(let ((escape-* (escaper *))) ; THIS TEST SHOULD NOT STAY HERE, IT APPEARS TOO EARLY
+ (+ (escape-* 5 2) 3)) ; the waiting + is abandoned
 
 (display "\n--- Contexts ---\n")
 
