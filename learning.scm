@@ -2,8 +2,6 @@
 (load "introduction-to-continuations.so")
 
 
-(display (call-with-output-string (lambda (port) (display "second hello world\n" port))))
-
 (define x 4)
 
 (make-escaper)

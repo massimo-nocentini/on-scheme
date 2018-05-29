@@ -4,6 +4,8 @@
     (import chicken scheme)
 
     (use srfi-1 srfi-69 data-structures)
+    
+    (use commons)
 
     (define-record unionfind π rank)
 
@@ -16,7 +18,7 @@
          (newline out)))
        (unionfind->alist U))))
 
-    (define unionfind-init
+    (define unionfind-empty
      (lambda ()
       (make-unionfind (make-hash-table) (make-hash-table))))
 
@@ -72,14 +74,21 @@
                             (hash-table-update! rank root-y add1))))))))))
        ≡)))
 
-    (define with-unionfind
+    (define unionfind-new
      (lambda (recv)
-      (let* ((U     (unionfind-init))
-             (↑     (unionfind-↑ U))
-             (↑!    (unionfind-↑! U))
-             (≡     (unionfind-≡ U))
-             (→     (lambda () (unionfind->alist U))))
-       (recv U ↑ ↑! ≡ →))))
+      (let ((U (unionfind-empty))
+            (R (curry₁ recv)))
+       (unionfind-accessors U (R U)))))
+       ;(unionfind-accessors U (lambda (↑ ↑! ≡ →)
+               ;                        (recv U ↑ ↑! ≡ →))))))
+
+    (define unionfind-accessors
+     (lambda (U recv)
+      (let ((↑     (unionfind-↑ U))
+            (↑!    (unionfind-↑! U))
+            (≡     (unionfind-≡ U))
+            (→     (lambda () (unionfind->alist U))))
+       (recv ↑ ↑! ≡ →))))
 
     (define unionfind->alist
      (lambda (U)

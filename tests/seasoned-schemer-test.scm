@@ -1,5 +1,7 @@
 
-(use seasoned-schemer continuations test)
+ (import chicken scheme)
+ (use test)
+ (use seasoned-schemer continuations)
 
     (test-group "multi-insert*&co"
 

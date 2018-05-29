@@ -3,8 +3,11 @@
 
 (module seasoned-schemer *
 
- (import scheme chicken)
- (use continuations matchable data-structures)
+ (import chicken scheme)
+
+ (use srfi-1)
+ (use matchable data-structures)
+ (use commons continuations)
 
  (define multi-insert*&co
   (lambda (new old_l old_r sexp coll)
@@ -70,7 +73,7 @@
     (define intersect
      (lambda (this that)
       (letrec ((I (lambda (l)
-                   (dbind/car+cdr l 
+                   (dest+match/car+cdr l 
                     ((i  is) (cond 
                               ((member i that) (cons i (I is))) 
                               (else (I is))))
@@ -139,7 +142,7 @@
     (define leftmost/awkward
      (lambda (l)
       (letrec ((L (lambda (ll)
-                   (dbind/car+cdr ll 
+                   (dest+match/car+cdr ll 
                     ((first rest)
                      (cond 
                       ((symbol? first) first)
@@ -156,7 +159,7 @@
     (define leftmost/awkward+letcc
      (lambda (l)
       (letrec ((L (lambda (ll hop)
-                   (dbind/car+cdr ll 
+                   (dest+match/car+cdr ll 
                     ((first rest)
                      (cond 
                       ((symbol? first) (hop first))
@@ -187,7 +190,7 @@
      (lambda (l)
       (escape
        (hop (let L ((ll l))
-             (dbind/car+cdr ll 
+             (dest+match/car+cdr ll 
               ((first rest)
                (cond 
                 ((symbol? first) (hop first))
@@ -202,7 +205,7 @@
     (define rember1*/letcc
      (lambda (atom sexp)
       (letrec ((R (lambda (sexp skip)
-                   (dbind/car+cdr sexp
+                   (dest+match/car+cdr sexp
                     ((a d) 
                      (cond
                       ((symbol? a) 
@@ -227,7 +230,7 @@
                                 (display reason)
                                 (skip reason)))))
                (R (lambda (sexp keep-searching)
-                   (dbind/car+cdr sexp
+                   (dest+match/car+cdr sexp
                     ((a d) 
                      (cond
                       ((symbol? a) 

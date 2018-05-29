@@ -11,16 +11,20 @@ promise:
 collatz:
 	csc -dynamic collatz.scm -J
 	csc -dynamic collatz.import.scm -J
-	#mv collatz.so collatz.import.so ../tests/
-	#cd ../tests/ && make collatz-test
 
 continuations:
 	csc -dynamic continuations.scm -J
 	csc -dynamic continuations.import.scm -J
-	#mv continuations.so continuations.import.so ../tests/
-	#cd ../tests/ && make continuations-test
 
-all: clean commons promise continuations collatz 
+seasoned-schemer:
+	csc -dynamic seasoned-schemer.scm -J
+	csc -dynamic seasoned-schemer.import.scm -J
+
+unionfind:
+	csc -dynamic unionfind.scm -J
+	csc -dynamic unionfind.import.scm -J
+
+all: clean commons promise continuations collatz seasoned-schemer unionfind
 	mv *.so ../tests/
 	cd ../tests/ && make test-all
 

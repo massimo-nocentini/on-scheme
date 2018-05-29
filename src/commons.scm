@@ -1,5 +1,4 @@
 
-;(declare (unit commons))
 
 (module commons *
 
@@ -7,7 +6,7 @@
  
  (use srfi-1 srfi-69) ; `use` only for `srfi`s
 
- (use data-structures)
+ (use data-structures ports)
 
  (define curry₁
   (lambda (f)
@@ -53,5 +52,17 @@
        (match sexp 
         (() null-sexp)
         ((a . d) pair-sexp) ...))))
+
+    (define call+stdout
+     (lambda (thunk recv)
+      (let* ((str-port (open-output-string)) 
+             (result (with-output-to-port str-port thunk)))
+       (recv result (get-output-string str-port)))))
+
+    (define member? 
+     (lambda args
+      (cond 
+       ((apply member args) #t)
+       (else #f))))
 
 )

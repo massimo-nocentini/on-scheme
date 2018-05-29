@@ -1,4 +1,6 @@
 
+
+
 promise-test:
 	csc promise-test.scm
 	mv promise-test executables/
@@ -19,4 +21,19 @@ learning-test:
 	mv learning-test executables/
 	./executables/learning-test
 
-test-all: promise-test collatz-test continuations-test learning-test
+ackermann-test:
+	csc ackermann-test.scm
+	mv ackermann-test executables/
+	./executables/ackermann-test
+
+seasoned-schemer-test:
+	csc seasoned-schemer-test.scm
+	mv seasoned-schemer-test executables/
+	./executables/seasoned-schemer-test
+
+unionfind-test:
+	csc unionfind-test.scm
+	mv unionfind-test executables/
+	./executables/unionfind-test
+
+test-all: promise-test collatz-test continuations-test learning-test ackermann-test seasoned-schemer-test unionfind-test

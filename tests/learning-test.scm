@@ -2,7 +2,62 @@
 
 (import chicken scheme)
 
-(use test matchable) 
+(use test matchable)
+
+(use commons)
+
+    (test-group "DELAY-FORCE"
+     (letrec ((stream-filter/tailcall (lambda (p? s)
+                                      (delay-force
+                                       (let ((s-mature (force s)))
+                                        (if (null? s-mature)
+                                         (delay '())
+                                         (let-values (((h t) (car+cdr s-mature)))
+                                          (if (p? h)
+                                           (delay (cons h (stream-filter/tailcall p? t)))
+                                           (stream-filter/tailcall p? t))))))))
+              (stream-filter/stackfull (lambda (p? s) ; very inefficient version that uses unbounded memory because of (delay (force ...))
+                                         (delay
+                                          (force
+                                           (let ((s-mature (force s)))
+                                            (if (null? s-mature)
+                                             (delay '())
+                                             (let-values (((h t) (car+cdr s-mature)))
+                                              (if (p? h)
+                                               (delay (cons h (stream-filter/stackfull p? t)))
+                                               (stream-filter/stackfull p? t)))))))))
+              (from  (lambda (n)
+                      (delay-force (cons n (from (+ n 1))))))
+              (large-number 10000))
+    (test large-number (car (force (stream-filter/tailcall
+                          (lambda (n) (= n large-number))
+                          (from 0)))))
+    )
+    )
+
+    (test-group "BOOLEANS"
+
+     (test 'fail (if #f 'succeed 'fail))
+     (test 'succeed (if '() 'succeed 'fail))
+     (test 'succeed (if `(,#f ,#f) 'succeed 'fail))
+     (test 'else (cond
+                  ((and #t #f) => (lambda (y) #t))
+                  (else 'else)))
+
+    )
+
+    (test-group "HASH TABLE"
+
+     (let ((H (make-hash-table)))
+      (hash-table-set! H 'hello 'world)
+      (test #t (hash-table-exists? H 'hello)))
+
+     (let ((H (make-hash-table)))
+      (hash-table-set! H 'hello 'world)
+      (hash-table-set! H 'hello 'new-world)
+      (test 'new-world (hash-table-ref H 'hello)))
+
+    )
 
     (test-group "MATCHABLE"
 
@@ -39,14 +94,29 @@
 
     (test-group "OUTPUT PORTS"
 
-     (let* ((str-port (open-output-string)) 
-            (result (with-output-to-port str-port 
-                     (lambda () 
-                      (display "hello world") 
+     (let* ((str-port (open-output-string))
+            (result (with-output-to-port str-port
+                     (lambda ()
+                      (display "hello world")
                       "succeed"))))
       (test "hello world" (get-output-string str-port))
-      (test "succeed" result)
-      (test "succeed" (with-output-to-string (lambda () (display 'succeed)))))
+      (test "succeed" result))
+
+     (call+stdout
+      (lambda ()
+       (display "hello world")  ; to be redirected into a collecting string
+       '(hello world))          ; to be used as return value
+      (lambda (r s)
+       (test-assert (and (equal? '(hello world) r) (equal? "hello world" s)))))
+
+
+     (test "succeed" (with-output-to-string (lambda ()
+                                             (display 'succeed)
+                                             #t))) ; `with-output-to-string` discards the return value
+
+     (test "hello-world" (call-with-output-string (lambda (port)
+                                                   (display 'hello-world port)
+                                                   #t))) ; `call-with-output-string` discards the return value
 
     )
 

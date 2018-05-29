@@ -11,7 +11,7 @@ run-seasoned-schemer-tests: continuations
 
 
 run-intro-continuations-tests:
-	csi utils.scm continuations.scm < introduction-to-continuations-tests.scm
+	csi utils.scm src/continuations.scm < introduction-to-continuations-tests.scm
 
 continuations: # both object code and dynamic library
 	# the following commands comes from here: http://wiki.call-cc.org/man/4/Modules#examples-of-using-modules

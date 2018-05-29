@@ -1,25 +1,36 @@
 
-; implementation of a macro for the original Ackermann function φ.
+(import chicken scheme)
 
-(use matchable continuations)
+(use matchable test)
 
-    (define-syntax phi
+(use continuations)
+
+; implementation of a macro for the original Ackermann function φ, 
+; taken from https://en.wikipedia.org/wiki/Ackermann_function
+    (define-syntax φ
      (syntax-rules ()
-      ((_ m n 0) (+ m n))
-      ((_ m 0 1) 0)
-      ((_ m 0 2) 1)
-      ((_ m 0 p) m)
-      ((_ m n p) (phi m (phi m (sub1 n) p) (sub1 p)))))
+      ((φ m n 0) (+ m n))
+      ((φ m 0 1) 0)
+      ((φ m 0 2) 1)
+      ((φ m 0 p) m)
+      ((φ m n p) (φ m (φ m (sub1 n) p) (sub1 p)))))
     
-    (define-syntax A
+    (define-syntax AA
      (syntax-rules ()
-      ((_ () ns) (a . ns))
-      ((_ (m . ms) ()) (A ms (a)))
+      ((_ () ns) '(a . ns))
+      ((_ (m . ms) '()) (A ms '(a)))
       ((_ (m . ms) (n . ns)) (A ms (A (m . ms) ns)))))
 
-    ;(phi 1 1 1)
+    (define A
+     (lambda (α β)
+      (match (list α β)
+       ((() ns) (cons '● ns))
+       (((m . ms) ()) (A ms '(●)))
+       (((m . ms) (n . ns)) (A ms (A (cons m ms) ns))))))
+
+    ;(display (φ 1 1 1))
     
-    ;(A (a a) (a a a))
+    (test '(● ● ● ● ● ● ● ● ●) (A '(a a) '(a a a)))
 
     #;(let ((sexp '(A (a a) (a a a))))
      (printf "~A is the ackermann value of ~A"
@@ -103,10 +114,10 @@
                     (else (E starting-sexp whole (string-append "" tabs) "●")))))))))))))
 
 ; in order to see Ackermann reductions type the following in the REPL:
-; >  (ackermann-expander '(A 3 6))
+; (ackermann-expander '(A 3 6))
 ; if you want timing info too:
-; > (time (ackermann-expander '(A 3 6)))
+; (time (ackermann-expander '(A 3 6)))
 ; finally, to restart the natural unwind of recursion stack then type:
-; > (restart 'any-atom-should-work)
+; (restart 'any-atom-should-work)
 ; moreover, if you want to restart the computation with a different Ackermann form <A-form> then:
 ; > (restart <A-form>) ; where <A-form> = '(A n m) for some integers n and m
