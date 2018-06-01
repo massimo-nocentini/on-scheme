@@ -24,7 +24,11 @@ unionfind:
 	csc -dynamic unionfind.scm -J
 	csc -dynamic unionfind.import.scm -J
 
-all: clean commons promise continuations collatz seasoned-schemer unionfind
+streams:
+	csc -dynamic streams.scm -J
+	csc -dynamic streams.import.scm -J
+
+all: clean commons promise continuations collatz seasoned-schemer unionfind streams
 	mv *.so ../tests/
 	cd ../tests/ && make test-all
 

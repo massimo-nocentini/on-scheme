@@ -1,6 +1,4 @@
 
-
-
 promise-test:
 	csc promise-test.scm
 	mv promise-test executables/
@@ -36,4 +34,9 @@ unionfind-test:
 	mv unionfind-test executables/
 	./executables/unionfind-test
 
-test-all: promise-test collatz-test continuations-test learning-test ackermann-test seasoned-schemer-test unionfind-test
+streams-test:
+	csc -X numbers-syntax streams-test.scm # according to http://wiki.call-cc.org/eggref/4/numbers#compiled-code
+	mv streams-test executables/
+	./executables/streams-test
+
+test-all: promise-test collatz-test continuations-test learning-test ackermann-test seasoned-schemer-test unionfind-test streams-test

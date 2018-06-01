@@ -65,4 +65,15 @@
        ((apply member args) #t)
        (else #f))))
 
+    (define map-with-index
+     (lambda (f s)
+      (lambda (lst)
+       (letrec ((M (lambda (l n)
+                    (cond
+                     ((null? l) '())
+                     (else (cons
+                            ((f n) (car l))
+                            (M (cdr l) (add1 n))))))))
+        (M lst s)))))
+
 )
