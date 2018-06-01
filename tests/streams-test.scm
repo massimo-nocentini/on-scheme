@@ -1,32 +1,35 @@
 
+
+
 (import chicken scheme)
 
-(use srfi-1)
+(use srfi-1 test numbers)
 
-(use numbers test)
+(use commons streams)
 
-(use streams)
-
-    (let* (
-           (take (lambda (n) (compose stream:>list (stream:take n)))) ; fetching function
-           (first-10-nats '(0 1 2 3 4 5 6 7 8 9))
-           (x (stream:range 0 10))
-           (seq ((stream:map accum) (stream:range 1 20)))
-           (evens ((stream:filter even?) seq))
-           (multiples-of-5 ((stream:filter (divisable-by? 5)) seq))
-           (nats (stream:from 0))
-           (nats>0 (stream:cdr nats))
-           (primes (eratosthenes (stream:cdr nats>0)))
-           (no-7s ((stream:filter (compose not (divisable-by? 7))) nats))
-           (fibs (fib-gen 0 1))
-           (frac/1-7 (radix-expand 1 7 10))
-           (frac/13-7 (radix-expand 13 7 10))
-           (frac/3-8 (radix-expand 3 8 10))
-          )
-     (test 5 (stream:ref 5 x))
-     (test 7 (stream:ref 7 x))
-     (test '(1 3 6 10 15 21 28 36 45 55 66 78 91 105 120 136 153 171 190)
-      ((take 19) seq))
+    (define run-tests
+     (lambda ()
+      (let* (
+             (take (lambda (n) (compose stream:>list (stream:take n)))) ; fetching function
+             (first-10-nats '(0 1 2 3 4 5 6 7 8 9))
+             (x (stream:range 0 10))
+             (seq ((stream:map accum) (stream:range 1 20)))
+             (evens ((stream:filter even?) seq))
+             (multiples-of-5 ((stream:filter (divisable-by? 5)) seq))
+             (nats (stream:from 0))
+             (nats>0 (stream:cdr nats))
+             (primes (eratosthenes (stream:cdr nats>0)))
+             (no-7s ((stream:filter (compose not (divisable-by? 7))) nats))
+             (fibs (fib-gen 0 1))
+             (frac/1-7 (radix-expand 1 7 10))
+             (frac/13-7 (radix-expand 13 7 10))
+             (frac/3-8 (radix-expand 3 8 10))
+            )
+       (test 5 (stream:ref 5 x))
+       (test 7 (stream:ref 7 x))
+       (test
+        '(1 3 6 10 15 21 28 36 45 55 66 78 91 105 120 136 153 171 190)
+        ((take 19) seq))
 (test 120 (stream:ref 6 evens))
     (test '(3 4 5 6 7) ((take 5) (stream:from 3)))
     (test '(10 15 45 55 105 120 190) (stream:>list multiples-of-5))
@@ -35,7 +38,8 @@
     (test first-10-nats ((compose stream:>list list->stream) first-10-nats)) ; therefore `identity`
     (test '(0 1 1 2 3 5 8 13 21 34) ((take 10) fibs))
     (test '(2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97 101 103 107 109 113 127 131 137 139 149 151 157 163 167 173 179 181 191 193 197 199 211 223 227 229 233 239 241 251 257 263 269 271 277 281 283 293 307 311 313 317 331 337 347 349 353 359 367 373 379 383 389 397 401 409 419 421 431 433 439 443 449 457 461 463 467 479 487 491 499 503 509 521 523 541)
-     ((take 100) primes))
+     ((take 100) primes)
+    )
     (test '(1 1 1 1 1 1 1 1 1 1) ((take 10) stream:1s))
     (test '(1 4 2 8 5 7 1 4 2 8 5 7 1 4 2 8 5 7 1 4) ; 1/7 \sim 0.142..
      ((take 20) frac/1-7))
@@ -78,7 +82,7 @@
       ((take 10) (sqrt-series stream:1s)))
 (test ((take 10) stream:1s) ((take 10) ((compose (expt-series 2) sqrt-series) stream:1s)))
     (test '(1 2 3 4 5 6 7 8 9 10) ((take 10) (mul-series stream:1s stream:1s)))
-    (test '(0 1 3 6 10 15 21 28 36 45) ((take 10) (mul-series nats stream:1s))))
+    (test '(0 1 3 6 10 15 21 28 36 45) ((take 10) (mul-series nats stream:1s)))
 
     (letdelay ((exponential-series (add-series
                                     stream:1
@@ -121,19 +125,16 @@
         (division-series sine-series cosine-series) ; tangent-series
         (revert-series arctan-series)))) ; (equal? ((compose T arctan-series) x) x) ↔ (equal? T tangent-series)
     ))
-
     (test '(1 -1 0 0 0 0 0 0 0 0) ((take 10) (inverse-series stream:1s)))
     (test '(1 -2 1 0 0 0 0 0 0 0) ((take 10) (inverse-series nats>0)))
     (test '(1 0 0 0 0 0 0 0 0 0) ((take 10) (mul-series nats>0 (inverse-series nats>0))))
     (test '(1 -1 -1 0 0 0 0 0 0 0) ((take 10) (inverse-series (stream:cdr fibs))))
     (test '(1 0 0 0 0 0 0 0 0 0) ((take 10) (mul-series fibs>0 (inverse-series fibs>0))))
-
 (let ((non-unary-series (stream:cons 4 nats>0)))
  (test '(1/4 -1/16 -7/64 -33/256 -119/1024 -305/4096 -231/16384 3263/65536 26537/262144 133551/1048576)
   ((take 10) (inverse-series non-unary-series)))
  (test '(1 0 0 0 0 0 0 0 0 0)
   ((take 10) (mul-series non-unary-series (inverse-series non-unary-series)))))
-
     (test '(1 0 -6 0 12 0 -8 0 0 0)
      ((take 10) ((expt-series 3) (list->poly '(1 0 -2)))))
     (test '(1 1 1 1 1 1 1 1 1 1)
@@ -160,7 +161,6 @@
     (test ; h(t) = tA(h(t)) where h(t) = 1/(1-t), aka the Pascal comp inverse
      ((take 10) (division-series (formalvar-series 1) `(1 1 . ,stream:0s)))
      ((take 10) (revert-series (stream:cons 0 stream:1s))))
-
 (let ((rows ((take 10)
              (compose-series ; multivariate
               (division-series stream:1 (list->poly '(1 -1)))
@@ -176,7 +176,6 @@
          (1 8 28 56 70 56 28 8 1)
          (1 9 36 84 126 126 84 36 9 1))
   ((map-with-index take 1) rows)))
-
     (test '((1 0 0 0 0 0 0 0 0 0)
             (1 1 1 1 1 1 1 1 1 1)
             (1 2 3 4 5 6 7 8 9 10)
@@ -192,7 +191,6 @@
                    (division-series stream:1 (list->poly '(1 -1)))
                    (list->poly `( ,(list->poly '()) ,stream:1s))))))
       (map (take 10) rows)))
-
     (test '((1 1 1 1 1 1 1 1 1 1)
             (0 1 2 3 4 5 6 7 8 9)
             (0 0 1 3 6 10 15 21 28 36)
@@ -211,7 +209,6 @@
                     (list->poly `( ,(list->poly '()) ,(stream:cons 0 stream:1s)))
                    )))))
       (map (take 10) rows)))
-
     (test '((1 0 0 0 0 0 0 0 0 0)
             (0 1 1 1 1 1 1 1 1 1)
             (0 0 1 2 3 4 5 6 7 8)
@@ -227,7 +224,6 @@
                    (division-series stream:1 (list->poly '(1 -1)))
                    (list->poly `( ,(list->poly '()) ,(stream:cons 0 stream:1s)))))))
       (map (take 10) rows)))
-
     (test '((1 0 0 0 0 0 0 0 0 0)
             (0 1 1 1 1 1 1 1 1 1)
             (0 0 2 4 6 8 10 12 14 16)
@@ -245,7 +241,6 @@
                                   ,(stream:cons 0 stream:1s)
                                   ,(stream:cons 0 (stream:cons 0 stream:1s))))))))
       (map (take 10) rows)))
-
     (test '((1)
             (1 1)
             (1 3 1)
@@ -257,7 +252,6 @@
             (1 36 210 462 495 286 91 15 1)
             (1 45 330 924 1287 1001 455 120 17 1))
      ((take 10) (riordan-array stream:1s (stream:from 1))))
-
     (test '(1 1 2 5 14 42 132 429 1430 4862) ((take 10) catalan-series))
     (test '(0 1 1 2 5 14 42 132 429 1430)
      ((take 10)
@@ -266,13 +260,11 @@
         stream:1
         (sqrt-series (list->poly '(1 -4))))
        (list->poly '(2)))))
-
     (letdelay (; again looking for Catalan numbers
                (tree (stream:cons 0 forest))
                (lst (stream:cons 1 lst))
                (forest (compose-series lst tree)))
      (test '(0 1 1 2 5 14 42 132 429 1430) ((take 10) tree)))
-
     (test '((1)
             (1 1)
             (2 2 1)
@@ -284,7 +276,6 @@
             (1430 1430 1001 572 275 110 35 8 1)
             (4862 4862 3432 2002 1001 429 154 44 9 1))
      ((take 10) (riordan-array catalan-series catalan-series)))
-
     (test '(1 1 2 3 5 8 13 21 34 55) ((take 10) fibonacci-series))
     (test '((1)
             (1 1)
@@ -297,7 +288,6 @@
             (34 762 741 493 258 108 35 8 1)
             (55 2440 2406 1644 903 410 152 44 9 1))
      ((take 10) (riordan-array fibonacci-series catalan-series)))
-
     (test '((1)
             (1 1)
             (2 2 1)
@@ -309,7 +299,6 @@
             (34 130 233 256 190 98 35 8 1)
             (55 235 474 594 511 315 140 44 9 1))
      ((take 10) (riordan-array fibonacci-series fibonacci-series)))
-
     (test '((1)
             (1 1)
             (2 2 1)
@@ -321,7 +310,6 @@
             (34 54 79 97 92 63 29 8 1)
             (55 88 133 176 189 155 92 37 9 1))
      ((take 10) (riordan-array fibonacci-series stream:1s)))
-
     (test '((1)
             (1 1)
             (2 2 1)
@@ -333,7 +321,6 @@
             (40320 6849 1809 689 289 111 35 8 1)
             (362880 50111 9791 2942 1133 444 155 44 9 1))
      ((take 10) (riordan-array factorials catalan-series)))
-
     (test '((1)
             (1 1)
             (2 2 1)
@@ -455,7 +442,6 @@
              (1105 (12 31) (9 32) (4 33)))
       ((take 10) (F sums-of-squares)))
      ))
-     
 
     (let ((expected '(0 1/2 3/2 3 5 15/2 21/2 14 18 45/2)))
      (test expected ((take 10) ((integral-series&rec 0 1/2) nats>0)))
@@ -484,8 +470,7 @@
 #;(test '() ; FAILING TEST!
     (map (lambda (p)
           (list (exact->inexact (car p)) (exact->inexact (cadr p))))
-     ((take 500) ((stream:zip-with list) v i))))
-))
+     ((take 500) ((stream:zip-with list) v i))))))
 
     (let* ((cesaro (stream:map-consecutive-pairs
                     (lambda (n m) (equal? (gcd n m) 1))))
@@ -493,6 +478,11 @@
                 (stream:montecarlo (cesaro (random-numbers 1))))))
      0
 #;(test '() ; FAILING TEST!
-    ((take 1000) pi))
-    )
-)
+    ((take 1000) pi)))
+
+    ))
+    ))
+
+
+
+(run-tests)
