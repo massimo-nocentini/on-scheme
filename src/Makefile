@@ -1,4 +1,6 @@
 
+current:
+	cd ../tests/ && make streams-test
 
 commons:
 	csc -dynamic commons.scm -J
@@ -28,7 +30,11 @@ streams:
 	csc -dynamic streams.scm -J
 	csc -dynamic streams.import.scm -J
 
-all: clean commons promise continuations collatz seasoned-schemer unionfind streams
+series:
+	csc -dynamic series.scm -J
+	csc -dynamic series.import.scm -J
+
+all: clean commons promise continuations collatz seasoned-schemer unionfind streams series
 	mv *.so ../tests/
 	cd ../tests/ && make test-all
 

@@ -3,10 +3,15 @@
 (module commons *
 
  (import chicken scheme)
- 
+
  (use srfi-1 srfi-69) ; `use` only for `srfi`s
 
  (use data-structures ports)
+
+ (define-syntax λ ; "little-lambda", or "lambda the ultimate", the usual functional abstraction
+  (syntax-rules ()
+   ((λ args body ...)
+    (lambda args body ...))))
 
  (define curry₁
   (lambda (f)
@@ -17,6 +22,8 @@
  (define fmap    (curry₁ map))
  (define fapply  (curry₁ apply))
  (define ffilter (curry₁ filter))
+
+ (define identity* (lambda args args))
 
  (define subscripts
   (let ((H (make-hash-table)))
@@ -42,30 +49,30 @@
 
 (define symbol∼subscripts (symbol∼ subscripts))
 
-     (define eternity 
-      (lambda args 
+     (define eternity
+      (lambda args
        (apply eternity args)))
 
     (define-syntax dest+match/car+cdr
      (syntax-rules (else)
       ((dbind/car+cdr sexp ((a d) pair-sexp) ... (else null-sexp))
-       (match sexp 
+       (match sexp
         (() null-sexp)
         ((a . d) pair-sexp) ...))))
 
     (define call+stdout
      (lambda (thunk recv)
-      (let* ((str-port (open-output-string)) 
+      (let* ((str-port (open-output-string))
              (result (with-output-to-port str-port thunk)))
        (recv result (get-output-string str-port)))))
 
-    (define member? 
+    (define member?
      (lambda args
-      (cond 
+      (cond
        ((apply member args) #t)
        (else #f))))
 
-    (define map-with-index
+    (define map/with-index
      (lambda (f s)
       (lambda (lst)
        (letrec ((M (lambda (l n)
@@ -75,5 +82,22 @@
                             ((f n) (car l))
                             (M (cdr l) (add1 n))))))))
         (M lst s)))))
+
+    (define map/call-with-values
+     (lambda (producer consumer)
+      (fmap (lambda (a)
+             (call-with-values (λ () (producer a)) consumer)))))
+
+    (define map/values
+     (lambda (producer)
+      (map/call-with-values producer identity*)))
+
+    (define accumulator
+     (lambda (f s)
+      (let ((acc s))
+       (lambda (x)
+        (set! acc (f x acc))
+        acc))))
+
 
 )

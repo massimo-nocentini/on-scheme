@@ -31,7 +31,7 @@
 
     (define-syntax stream:cons
      (syntax-rules ()
-      ((stream:cons a d) (delay-force (cons a d)))))
+      ((stream:cons a d) (delay (cons a d)))))
 
     (define-syntax letdelay
      (syntax-rules ()
@@ -64,11 +64,6 @@
         (let*-values (((a d) (dest s)) ...)
          body ...)))))
 
-    (define-syntax λ ; "little-lambda", or "lambda the ultimate", the usual functional abstraction
-     (syntax-rules ()
-      ((λ args body ...)
-       (lambda args body ...))))
-
     (define-syntax Λ ; "big-lambda", a functional abstraction that returns *streams* of values
      (syntax-rules ()
       ((Λ args body ...)
@@ -87,16 +82,13 @@
        ((zero? n) (stream:car s))
        (else (stream:ref (sub1 n) (stream:cdr s))))))
 
-    (define stream:mplus
-     (Λ streams
-      (cond
-       ((null? streams) stream:empty)
-       (else (let-values (((α streams') (car+cdr streams)))
-              (stream:dest/car+cdr ((α (a αs)))
-               (let ((streams'' (cond
-                                 ((stream:null? αs) streams')
-                                 (else (append streams' (list αs))))))
-                (stream:cons a (apply stream:mplus streams'')))))))))
+    (define stream:range
+     (lambda (low high)
+      (letrec ((R (Λ (low)
+                   (cond
+                    ((>= low high) stream:empty)
+                    (else (stream:cons low (R (add1 low))))))))
+       (R low))))
 
     (define stream:foldr
      (lambda (func init)
@@ -112,13 +104,15 @@
                     (stream:cons (func scar) (M scdr))))))
        M)))
 
-    (define stream:range
-     (lambda (low high)
-      (letrec ((R (Λ (low)
-                   (cond
-                    ((>= low high) stream:empty)
-                    (else (stream:cons low (R (add1 low))))))))
-       (R low))))
+    #;(define stream:map
+     (lambda (func)
+      (letrec ((M (Λ (s)
+                   (stream:dest/car+cdr s 
+                    ((scar scdr) (stream:cons (func scar) (M scdr)))
+                    (else stream:empty))
+                  )))
+       M)))
+
 
     (define stream:filter
      (lambda (pred?)
@@ -139,36 +133,17 @@
                             (stream:cons rcar (T (add1 i) rcdr))))))))
         (T 1 s)))))
 
-    (define stream:>list
+    (define stream:->list
      (lambda (s)
       (stream:dest/car+cdr ((s (scar scdr) (else '())))
-       (cons scar (stream:>list scdr)))))
+       (cons scar (stream:->list scdr)))))
 
     (define stream:from
      (Λ (n)
       (stream:cons n (stream:from (add1 n)))))
 
-    (define divisable-by?
-     (lambda (y)
-      (lambda (x)
-       (equal? (remainder x y) 0))))
 
-    (define accum
-     (let ((sum 0))
-      (lambda (x)
-       (set! sum (+ x sum))
-       sum)))
 
-    (define fib-gen
-     (Λ (a b)
-      (stream:cons a (fib-gen b (+ a b)))))
-
-    (define eratosthenes
-     (Λ (s)
-      (stream:dest/car+cdr ((s (prime primes)))
-       (stream:cons prime (eratosthenes
-                           ((stream:filter (compose not (divisable-by? prime)))
-                            primes))))))
 
     (define stream:repeat
      (lambda (n)
@@ -211,17 +186,6 @@
                      (else (mul-series s (E (sub1 n))))))))
         (E n)))))
 
-    (define make-prime?
-     (lambda (primes)
-      (let ((prime? (lambda (n)
-                     (letrec ((P (lambda (α)
-                                  (let ((p (stream:car α)))
-                                   (cond
-                                    ((> p (sqrt n)) #t)
-                                    (((divisable-by? p) n) #f)
-                                    (else (P (stream:cdr α))))))))
-                      (P primes)))))
-       prime?)))
 
     (define stream:cumulatives
      (let ((shift-first (compose stream:cdr car)))

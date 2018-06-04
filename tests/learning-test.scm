@@ -8,31 +8,35 @@
 
     (test-group "DELAY-FORCE"
      (letrec ((stream-filter/tailcall (lambda (p? s)
-                                      (delay-force
-                                       (let ((s-mature (force s)))
-                                        (if (null? s-mature)
-                                         (delay '())
-                                         (let-values (((h t) (car+cdr s-mature)))
-                                          (if (p? h)
-                                           (delay (cons h (stream-filter/tailcall p? t)))
-                                           (stream-filter/tailcall p? t))))))))
+                                       (delay-force
+                                        (let ((s-mature (force s)))
+                                         (if (null? s-mature)
+                                          (delay '())
+                                          (let-values (((h t) (car+cdr s-mature)))
+                                           (if (p? h)
+                                            (delay (cons h (stream-filter/tailcall p? t)))
+                                            (stream-filter/tailcall p? t))))))))
               (stream-filter/stackfull (lambda (p? s) ; very inefficient version that uses unbounded memory because of (delay (force ...))
-                                         (delay
-                                          (force
-                                           (let ((s-mature (force s)))
-                                            (if (null? s-mature)
-                                             (delay '())
-                                             (let-values (((h t) (car+cdr s-mature)))
-                                              (if (p? h)
-                                               (delay (cons h (stream-filter/stackfull p? t)))
-                                               (stream-filter/stackfull p? t)))))))))
+                                        (delay
+                                         (force
+                                          (let ((s-mature (force s)))
+                                           (if (null? s-mature)
+                                            (delay '())
+                                            (let-values (((h t) (car+cdr s-mature)))
+                                             (if (p? h)
+                                              (delay (cons h (stream-filter/stackfull p? t)))
+                                              (stream-filter/stackfull p? t)))))))))
               (from  (lambda (n)
                       (delay-force (cons n (from (+ n 1))))))
               (large-number 10000))
     (test large-number (car (force (stream-filter/tailcall
-                          (lambda (n) (= n large-number))
-                          (from 0)))))
+                                    (lambda (n) (= n large-number))
+                                    (from 0)))))
     )
+     
+    ;(test '3 (force (λ () 3)))
+    (test '3 (force (make-promise 3)))
+
     )
 
     (test-group "BOOLEANS"
@@ -118,6 +122,22 @@
                                                    (display 'hello-world port)
                                                    #t))) ; `call-with-output-string` discards the return value
 
+    )
+
+    (test-group "MAPPING"
+
+     (test '(hello world) (call-with-values (λ () (values 'hello 'world)) identity*))
+     (test 'succeed (values 'succeed))
+     (test 'fail (values 'fail 'succeed))
+     (test '(1 2 3) (map (lambda (i) (values (add1 i) i)) '(0 1 2))) ; this produces a warning: "expected a single result in argument #1 of procedure call `(cons (g2272 (##sys#slot g2278 0)) (quote ()))', but received 2 results"
+     (test '(1 2 3) 
+      ((map/call-with-values 
+        (lambda (i) (values (add1 i) i))
+        (lambda (more less) more))
+       '(0 1 2)))
+     (test '((1 1) (3 3)) 
+      ((map/values (lambda (p) (values (add1 (car p)) (cadr p)))) 
+       '((0 1) (2 3))))
     )
 
 (test-exit)
