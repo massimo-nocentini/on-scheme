@@ -1,11 +1,14 @@
+
 # on-scheme
-Understanding Scheme -- the hard way
+Understanding Scheme -- the hard way.
 
 ## Misc
    - http://www.defmacro.org/ramblings/fp.html#part_9
    - http://www.paulgraham.com/rootsoflisp.html
 
-
+## Fixed-point combinators
+   - [How to Succeed at Recursion Without Really Recursing][https://mvanier.livejournal.com/2897.html]
+   - https://en.wikipedia.org/wiki/Fixed-point_combinator 
 
 ## about `call/cc` 
    - http://www.cs.cornell.edu/courses/cs3110/2011sp/recitations/rec26-cps/cps.htm
