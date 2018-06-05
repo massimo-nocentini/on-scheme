@@ -18,7 +18,11 @@
      (test '(1 1 1 1 1 1 1 1 1 1) ((take 10) stream:1s))
 
      (test '(0 1 2 3 4 5 6 7 8 9) ((take 10) numbers/nats))
+     (let ((next (stream:iterator numbers/nats)))
+      (test '(0 1 2 3) (collect-values (lambda () 
+                                        (values (next) (next) (next) (next))))))
      (test 117 (stream:ref 100 ((not-multiples-of 7) numbers/nats)))
+
      (test '(0 1 3 6 10 15 21 28 36 45 55 66 78 91 105 120 136 153 171 190) ((take 20) numbers/triangular))
      (test 78 (stream:ref 6 (evens numbers/triangular)))
      (test '(0 10 15 45 55 105 120 190) ((take 8) ((multiples-of 5) numbers/triangular)))

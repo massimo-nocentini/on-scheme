@@ -92,6 +92,10 @@
      (lambda (producer)
       (map/call-with-values producer identity*)))
 
+    (define collect-values
+     (lambda (thunk)
+      (call-with-values thunk identity*)))
+
     (define accumulator
      (lambda (f s)
       (let ((acc s))

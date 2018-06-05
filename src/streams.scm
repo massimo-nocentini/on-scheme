@@ -142,8 +142,12 @@
      (Λ (n)
       (stream:cons n (stream:from (add1 n)))))
 
-
-
+    (define stream:iterator
+     (lambda (s)
+      (let ((α (stream:cons 'useless s)))
+       (lambda ()
+        (set! α (stream:cdr α))
+        (stream:car α)))))
 
     (define stream:repeat
      (lambda (n)
