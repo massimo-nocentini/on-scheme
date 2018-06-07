@@ -1,8 +1,6 @@
 
 language: scheme
 
-sudo: false
-
 os:
   - osx
   - linux
@@ -12,10 +10,10 @@ compiler:
   - clang
 
 before_install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update && brew install chicken                   ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then apt-get update && apt-get install -y chicken-bin    ; fi
-  - chicken-install test matchable numbers datatype
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update && brew install chicken                           ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update && sudo apt-get install -y chicken-bin  ; fi
+  - sudo chicken-install test matchable numbers datatype
 
 script:
     - cd src && make all && make deploy-shared-libs
-    - cd tests && make run-tests
+    - cd ../tests && make run-tests
