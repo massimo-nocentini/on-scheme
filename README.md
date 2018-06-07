@@ -1,4 +1,6 @@
 
+[![Build Status](https://travis-ci.org/massimo-nocentini/on-scheme.svg?branch=master)](https://travis-ci.org/massimo-nocentini/on-scheme)
+
 # on-scheme
 Understanding Scheme -- the hard way.
 
