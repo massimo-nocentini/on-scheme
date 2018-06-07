@@ -39,4 +39,4 @@ streams-test:
 	mv streams-test executables/
 	./executables/streams-test
 
-test-all: promise-test collatz-test continuations-test learning-test ackermann-test seasoned-schemer-test unionfind-test streams-test
+run-tests: promise-test collatz-test continuations-test learning-test ackermann-test seasoned-schemer-test unionfind-test streams-test

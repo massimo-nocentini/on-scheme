@@ -35,10 +35,14 @@ series:
 	csc -dynamic series.import.scm -J
 
 all: clean commons promise continuations collatz seasoned-schemer unionfind streams series
-	cd ../tests/ && make test-all
+	# pass
 
-move:
+deploy-shared-libs:
 	mv *.so ../tests/
 
 clean:
 	rm -rf *.so *.import.scm
+
+tests: all deploy-shared-libs
+	cd ../tests/ && make test-all
+
