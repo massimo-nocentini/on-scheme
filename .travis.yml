@@ -1,0 +1,12 @@
+
+
+language: scheme
+
+sudo: enabled
+
+install:
+    - sudo apt install chicken-scheme
+    - sudo chicken-install test matchable numbers
+
+script:
+    - cd src && make all 
