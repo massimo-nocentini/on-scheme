@@ -1,5 +1,5 @@
 
-current:
+current: commons streams series move
 	cd ../tests/ && make streams-test
 
 commons:
@@ -35,8 +35,10 @@ series:
 	csc -dynamic series.import.scm -J
 
 all: clean commons promise continuations collatz seasoned-schemer unionfind streams series
-	mv *.so ../tests/
 	cd ../tests/ && make test-all
+
+move:
+	mv *.so ../tests/
 
 clean:
 	rm -rf *.so *.import.scm

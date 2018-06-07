@@ -6,7 +6,7 @@
 
  (use srfi-1 srfi-69) ; `use` only for `srfi`s
 
- (use data-structures ports)
+ (use data-structures ports test)
 
  (define-syntax λ ; "little-lambda", or "lambda the ultimate", the usual functional abstraction
   (syntax-rules ()
@@ -103,5 +103,14 @@
         (set! acc (f x acc))
         acc))))
 
+    (define-syntax ✓
+     (syntax-rules ()
+      ((✓ fetcher expected sut) (test expected (fetcher sut)))
+      ((✓ label fetcher expected sut) (test label expected (fetcher sut)))))
+
+    (define-syntax ✗
+     (syntax-rules ()
+      ((✗ sexp) (test-error sexp))
+      ((✗ label sexp) (test-error label sexp))))
 
 )

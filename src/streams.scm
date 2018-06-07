@@ -69,26 +69,24 @@
       ((Λ args body ...)
        (lambda args (delay-force (begin body ...))))))
 
-    (define stream:empty
-     (letdelay ((α '())) α))
+    (define-syntax define-delay
+     (syntax-rules ()
+      ((define-delay bind sexp) (define bind (letdelay ((α sexp)) α)))))
+
+    (define-delay stream:empty '())
 
     (define stream:singleton
      (Λ (a)
       (stream:cons a stream:empty)))
 
     (define stream:ref
-     (lambda (n s)
-      (cond
-       ((zero? n) (stream:car s))
-       (else (stream:ref (sub1 n) (stream:cdr s))))))
-
-    (define stream:range
-     (lambda (low high)
-      (letrec ((R (Λ (low)
-                   (cond
-                    ((>= low high) stream:empty)
-                    (else (stream:cons low (R (add1 low))))))))
-       (R low))))
+     (lambda (n)
+      (lambda (α)
+       (letrec ((R (lambda (m s)
+                    (cond
+                     ((zero? m) ((compose car force) s))
+                     (else (R (sub1 m) (stream:cdr s)))))))
+        (R n α)))))
 
     (define stream:foldr
      (lambda (func init)
@@ -137,6 +135,8 @@
      (lambda (s)
       (stream:dest/car+cdr ((s (scar scdr) (else '())))
        (cons scar (stream:->list scdr)))))
+
+    (define list∘take (lambda (n) (compose stream:->list (stream:take n))))
 
     (define stream:from
      (Λ (n)
