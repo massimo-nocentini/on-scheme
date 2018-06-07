@@ -4,8 +4,9 @@ language: scheme
 
 sudo: enabled
 
-install:
-    - sudo apt install chicken-scheme
+before_install:
+    - sudo apt-get update
+    - sudo apt-get install -y chicken-bin
     - sudo chicken-install test matchable numbers
 
 script:
