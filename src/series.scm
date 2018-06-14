@@ -36,18 +36,6 @@
    (letdelay ((α (stream:cons 1 ((stream:zip-with *) α (stream:repeat n)))))
     α)))
 
- (define make-prime?
-  (lambda (primes)
-   (let ((prime? (lambda (n)
-                  (letrec ((P (lambda (α)
-                               (let ((p (stream:car α)))
-                                (cond
-                                 ((> p (sqrt n)) #t)
-                                 (((divisable-by? p) n) #f)
-                                 (else (P (stream:cdr α))))))))
-                   (P primes)))))
-    prime?)))
-
  (define multiples-of (○ stream:filter divisable-by?))
 
  (define not-multiples-of
@@ -81,11 +69,14 @@
   ((stream:map (accumulator + 0)) numbers/fibonacci))
 
  (define-delay numbers/nats/∞
-  (:⁺ 0 ((stream:zip-with +) stream:1s numbers/nats/∞)))
+  (stream:cons 0 ((stream:zip-with +) numbers/nats/∞ stream:1s)))
 
  (define-delay numbers/fibs/∞
   (:⁺ 0 1 ((stream:zip-with +) numbers/fibs/∞ (stream:cdr numbers/fibs/∞))))
  ;(define-delay numbers/fibs/∞ (stream:cons 0 (stream:cons 1 ((stream:zip-with +) numbers/fibs/∞ (stream:cdr numbers/fibs/∞)))))
+
+ (define-delay numbers/lucas/∞
+  (:⁺ 2 1 ((stream:zip-with +) numbers/lucas/∞ (stream:cdr numbers/lucas/∞))))
 
  (define numbers/fibs>0/∞
   (stream:cdr numbers/fibs/∞))
@@ -100,7 +91,15 @@
   (eratosthenes numbers/nats>1))
 
  (define-delay primes/∞
-  (stream:cons 2 ((stream:filter (make-prime? primes/∞)) (stream:from 3))))
+  (let ((prime? (lambda (n)
+                 (letrec ((P (lambda (α)
+                              (let ((p (stream:car α)))
+                               (cond
+                                ((> p (sqrt n)) #t)
+                                (((divisable-by? p) n) #f)
+                                (else (P (stream:cdr α))))))))
+                  (P primes/∞))))) ; here is the "whole meal" chunck
+   (stream:cons 2 ((stream:filter prime?) (stream:from 3)))))
 
  (define-delay numbers/factorials/∞
   (stream:cons 1 ((stream:zip-with *) numbers/factorials/∞ numbers/nats>0)))
