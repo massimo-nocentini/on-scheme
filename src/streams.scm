@@ -27,16 +27,21 @@
                      force))
     (define stream:cadr (compose stream:car stream:cdr))
     (define stream:cddr (compose stream:cdr stream:cdr))
-(define stream:caddr (compose stream:car stream:cddr))
+    (define stream:caddr (compose stream:car stream:cddr))
 
     (define-syntax stream:cons
      (syntax-rules ()
       ((stream:cons a d) (delay (cons a d)))))
 
+
     (define-syntax letdelay
      (syntax-rules ()
       ((letdelay ((bind sexp) ...) body ...)
        (letrec ((bind (delay-force sexp)) ...) body ...))))
+
+    (define-syntax define-delay
+     (syntax-rules ()
+      ((define-delay bind sexp) (define bind (letdelay ((α sexp)) α)))))
 
     (define-syntax stream:dest/car+cdr
      (syntax-rules (else)
@@ -69,11 +74,12 @@
       ((Λ args body ...)
        (lambda args (delay-force (begin body ...))))))
 
-    (define-syntax define-delay
-     (syntax-rules ()
-      ((define-delay bind sexp) (define bind (letdelay ((α sexp)) α)))))
-
     (define-delay stream:empty '())
+
+    (define-syntax :⁺
+     (syntax-rules ()
+      ((:⁺ α) α)
+      ((:⁺ a b ... ) (stream:cons a (:⁺ b ...)))))
 
     (define stream:singleton
      (Λ (a)
@@ -136,7 +142,7 @@
       (stream:dest/car+cdr ((s (scar scdr) (else '())))
        (cons scar (stream:->list scdr)))))
 
-    (define list∘take (lambda (n) (compose stream:->list (stream:take n))))
+    (define list○take (lambda (n) (○ stream:->list (stream:take n))))
 
     (define stream:from
      (Λ (n)

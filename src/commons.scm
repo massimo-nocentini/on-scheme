@@ -13,6 +13,8 @@
    ((λ args body ...)
     (lambda args body ...))))
 
+ (define ○ compose)
+
  (define curry₁
   (lambda (f)
    (lambda (g)

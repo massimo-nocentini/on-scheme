@@ -1,5 +1,5 @@
 
-current: commons streams series move
+current: commons streams series deploy-shared-libs
 	cd ../tests/ && make streams-test
 
 commons:
