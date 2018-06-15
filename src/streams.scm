@@ -161,13 +161,24 @@
        R)))
 
     (define stream:0s (stream:repeat 0))
-(define stream:1s (stream:repeat 1))
+    (define stream:1s (stream:repeat 1))
 
     (define stream:const
      (Λ (n)
       (stream:cons n stream:0s)))
 
-(define stream:1 (stream:const 1))
+    (define stream:1 (stream:const 1))
+
+    #;(define stream:in?
+     (lambda (n)
+      (lambda (α)
+       (letrec ((P (lambda (α)
+                    (stream:dest/car+cdr ((α (α₀ α⁺)))
+                     (cond
+                      ((equal? n α₀) #t)
+                      ((< n α₀) #f) 
+                      (else (P α⁺)))))))
+        (P α)))))
 
     (define stream:zip-with
      (lambda (op)

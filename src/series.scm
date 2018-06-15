@@ -116,4 +116,28 @@
  (define numbers/powers-of-3/∞
   (stream:cons 1 ((stream:zip-with +) numbers/powers-of-3/∞ numbers/powers-of-3/∞ numbers/powers-of-3/∞)))
 
+ (define max-dividing-power
+  (lambda (n)
+   (lambda (p) 
+    (letrec ((M (lambda (n c) 
+                 (let-values (((q r) (quotient&remainder n p)))
+                  (cond
+                   ((zero? r) (M q (add1 c))) ; tail-call so no need to use `call/cc`
+                   (else c))))))
+     (M n 0)))))
+
+ (define factorization
+  (Λ (n)
+   ((stream:map (max-dividing-power n)) primes/∞)))
+
+ (define prime?
+  (lambda (n)
+   (letrec ((P (lambda (α)
+                (stream:dest/car+cdr ((α (α₀ α⁺)))
+                 (cond
+                  ((equal? n α₀) #t)
+                  ((< n α₀) #f) 
+                  (else (P α⁺)))))))
+    (P primes/eratosthenes))))
+
  )
