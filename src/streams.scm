@@ -4,7 +4,7 @@
  (import chicken scheme)
 
  (use srfi-1)
- (use test numbers data-structures) 
+ (use test numbers data-structures)
  ;(use random-bsd)
 
  (use commons)
@@ -111,7 +111,7 @@
     #;(define stream:map
      (lambda (func)
       (letrec ((M (Λ (s)
-                   (stream:dest/car+cdr s 
+                   (stream:dest/car+cdr s
                     ((scar scdr) (stream:cons (func scar) (M scdr)))
                     (else stream:empty))
                   )))
@@ -176,7 +176,7 @@
                     (stream:dest/car+cdr ((α (α₀ α⁺)))
                      (cond
                       ((equal? n α₀) #t)
-                      ((< n α₀) #f) 
+                      ((< n α₀) #f)
                       (else (P α⁺)))))))
         (P α)))))
 
@@ -207,16 +207,21 @@
                      (else (mul-series s (E (sub1 n))))))))
         (E n)))))
 
-
-    (define stream:cumulatives
+    (define stream:tails
      (let ((shift-first (compose stream:cdr car)))
-      (lambda (op)
-       (lambda (s)
-        (letrec ((C (Λ streams
-                     (stream:cons
-                      (apply op (map stream:car streams))
-                      (apply C (cons (shift-first streams) streams))))))
-         (apply C (list s)))))))
+      (lambda (s)
+       (letrec ((C (Λ streams
+                    (stream:cons
+                     streams
+                     (apply C (cons (shift-first streams) streams))))))
+        (C s)))))
+
+    (define stream:prefixes
+     (○ (stream:map (fmap stream:car)) stream:tails))
+
+    (define stream:scan
+     (lambda (op)
+      (○ (stream:map (fapply op)) stream:prefixes)))
 
     (define list->
      (lambda (tail)
@@ -230,7 +235,7 @@
          (else (L l)))))))
 
     (define list->stream    (list-> stream:empty))
-(define list->poly      (list-> stream:0s))
+    (define list->poly      (list-> stream:0s))
 
 #;(define stream:append*
         (Λ (sos asos) ; which stands for 'Stream Of Streams' and 'Another Stream of Streams', respectively
@@ -371,12 +376,12 @@
      (letrec ((summands (Λ (n)
                          (stream:cons (/ 1 n) ((stream:map -)
                                                (summands (+ n 2)))))))
-      ((scale-series 4) ((stream:cumulatives +) (summands 1)))))
+      ((scale-series 4) ((stream:scan +) (summands 1)))))
 
     (define log2-series
      (letrec ((summands (Λ (n)
                          (stream:cons (/ 1 n) ((stream:map -) (summands (add1 n)))))))
-      ((stream:cumulatives +) (summands 1))))
+      ((stream:scan +) (summands 1))))
 
     (define sqrt-series
      (Λ (α)

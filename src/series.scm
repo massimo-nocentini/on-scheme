@@ -81,6 +81,15 @@
  (define numbers/fibs>0/∞
   (stream:cdr numbers/fibs/∞))
 
+ (define numbers/triangular/+scan
+  ((stream:scan +) numbers/nats/∞))
+
+ (define numbers/fibs/+scan
+  ((stream:scan +) numbers/fibs/∞))
+
+ (define numbers/fibs/∙scan
+  ((stream:scan *) (stream:cdr numbers/fibs/∞)))
+
  (define numbers/powers-of-2
   (powers-of/∞ 2))
 
@@ -118,8 +127,8 @@
 
  (define max-dividing-power
   (lambda (n)
-   (lambda (p) 
-    (letrec ((M (lambda (n c) 
+   (lambda (p)
+    (letrec ((M (lambda (n c)
                  (let-values (((q r) (quotient&remainder n p)))
                   (cond
                    ((zero? r) (M q (add1 c))) ; tail-call so no need to use `call/cc`
@@ -136,7 +145,7 @@
                 (stream:dest/car+cdr ((α (α₀ α⁺)))
                  (cond
                   ((equal? n α₀) #t)
-                  ((< n α₀) #f) 
+                  ((< n α₀) #f)
                   (else (P α⁺)))))))
     (P primes/eratosthenes))))
 
