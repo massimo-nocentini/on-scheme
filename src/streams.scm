@@ -9,25 +9,25 @@
 
  (use commons)
 
- (define stream:null? (compose null? force))
+ (define stream:null? (○ null? force))
 
- ;(define stream:car (compose car force))
- (define stream:car (compose
+ ;(define stream:car (○ car force))
+ (define stream:car (○
                      (lambda (i)
                       (cond
                        ((pair? i) (car i))
                        (else i)))
                      force))
- ;(define stream:cdr (compose cdr force))
- (define stream:cdr (compose
+ ;(define stream:cdr (○ cdr force))
+ (define stream:cdr (○
                      (lambda (i)
                       (cond
                        ((pair? i) (cdr i))
                        (else i)))
                      force))
-    (define stream:cadr (compose stream:car stream:cdr))
-    (define stream:cddr (compose stream:cdr stream:cdr))
-    (define stream:caddr (compose stream:car stream:cddr))
+    (define stream:cadr (○ stream:car stream:cdr))
+    (define stream:cddr (○ stream:cdr stream:cdr))
+    (define stream:caddr (○ stream:car stream:cddr))
 
     (define-syntax stream:cons
      (syntax-rules ()
@@ -65,7 +65,7 @@
     (define-syntax stream:dest/car+cdr!
      (syntax-rules ()
       ((stream:dest/car+cdr! ((s (a d)) ...) body ...)
-       (let ((dest (compose car+cdr force)))
+       (let ((dest (○ car+cdr force)))
         (let*-values (((a d) (dest s)) ...)
          body ...)))))
 
@@ -90,7 +90,7 @@
       (lambda (α)
        (letrec ((R (lambda (m s)
                     (cond
-                     ((zero? m) ((compose car force) s))
+                     ((zero? m) ((○ car force) s))
                      (else (R (sub1 m) (stream:cdr s)))))))
         (R n α)))))
 
@@ -102,10 +102,13 @@
        F)))
 
     (define stream:map
-     (lambda (func)
+     (lambda (func #!key (* #f))    ; `*` in the sense of *starred* defs in 'The Little Schemer',
+                                    ; namely to perform __tree recursion__ over streams.
       (letrec ((M (Λ (s)
                    (stream:dest/car+cdr ((s (scar scdr) (else stream:empty)))
-                    (stream:cons (func scar) (M scdr))))))
+                    (cond
+                     ((and * (promise? scar)) (stream:cons (M scar) (M scdr)))
+                     (else (stream:cons (func scar) (M scdr))))))))
        M)))
 
     #;(define stream:map
@@ -210,7 +213,7 @@
         (E n)))))
 
     (define stream:tails
-     (let ((shift-first (compose stream:cdr car)))
+     (let ((shift-first (○ stream:cdr car)))
       (lambda (s)
        (letrec ((C (Λ streams
                     (stream:cons
@@ -400,7 +403,7 @@
     (define exp-series
      (Λ (α)
       (cond
-       (((compose not equal?) 0 (stream:car α))
+       (((○ not equal?) 0 (stream:car α))
         (error "exp-series" "α₀ not zero"))
        (else (letdelay ((Y (add-series
                             stream:1
@@ -421,12 +424,12 @@
     (define stream:tableau
      (lambda (transform)
       (letrec ((T (Λ (s)
-                   (stream:cons s ((compose T transform) s)))))
+                   (stream:cons s ((○ T transform) s)))))
        (lambda (s)
-        ((stream:map stream:car) (T s))))))
+        ((stream:map stream:car *: #f) (T s))))))
 
     (define stream:enumerate-upper
-     (letrec ((tuple (compose flatten list))
+     (letrec ((tuple (○ flatten list))
               (B (Λ (s r)
                   (stream:dest/car+cdr ((s (scar scdr) (else r))
                                         (r (rcar rcdr) (else s)))
@@ -442,7 +445,7 @@
        (foldr B stream:empty streams))))
 
     (define stream:enumerate-lower
-     (letrec ((tuple (compose flatten list))
+     (letrec ((tuple (○ flatten list))
               (B (Λ (s r)
                   (stream:dest/car+cdr ((s (scar scdr) (else r))
                                         (r (rcar rcdr) (else s)))
@@ -458,7 +461,7 @@
        (foldr B stream:empty streams))))
 
     (define stream:enumerate-all
-     (letrec ((tuple (compose flatten list))
+     (letrec ((tuple (○ flatten list))
               (B (Λ (s r)
                   (stream:dest/car+cdr ((s (scar scdr) (else r))
                                         (r (rcar rcdr) (else s)))
@@ -477,7 +480,7 @@
 
     (define stream:enumerate-weighted
      (lambda (weight)
-      (letrec ((make-tuple (compose flatten list))
+      (letrec ((make-tuple (○ flatten list))
                (B (Λ (s r)
                    (stream:dest/car+cdr ((s (scar scdr) (else r))
                                          (r (rcar rcdr) (else s)))
@@ -498,7 +501,7 @@
 
     (define stream:take-while
      (lambda (pred?)
-      (letrec ((stop? (compose not pred?))
+      (letrec ((stop? (○ not pred?))
                (W (Λ (s)
                    (stream:dest/car+cdr ((s (scar scdr) (else stream:empty)))
                     (cond
@@ -517,7 +520,7 @@
 ((stream:filter F)
  ((stream:enumerate-weighted
    (lambda (i j #!optional (k 0))
-    ((compose abs -)
+    ((○ abs -)
      (+ (expt i n) (expt j n))
      (expt k n))))
   nats nats nats)))))
