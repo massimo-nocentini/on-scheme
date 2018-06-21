@@ -7,6 +7,10 @@
 (use commons)
 
     (test-group "DELAY-FORCE"
+
+     (test-assert (promise? (delay (+ 3 4))))
+     (test-assert (promise? (delay-force (+ 3 4))))
+
      (letrec ((stream-filter/tailcall (lambda (p? s)
                                        (delay-force
                                         (let ((s-mature (force s)))
@@ -28,13 +32,12 @@
                                               (stream-filter/stackfull p? t)))))))))
               (from  (lambda (n)
                       (delay-force (cons n (from (+ n 1))))))
-              (large-number 10000))
-    (test large-number (car (force (stream-filter/tailcall
-                                    (lambda (n) (= n large-number))
-                                    (from 0)))))
-    )
-     
-    ;(test '3 (force (λ () 3)))
+     (large-number 10000))
+     (test large-number (car (force (stream-filter/tailcall
+                                     (lambda (n) (= n large-number))
+                                     (from 0))))))
+
+    (test-assert (procedure? (force (λ () 3))))
     (test '3 (force (make-promise 3)))
 
     )
@@ -130,13 +133,13 @@
      (test 'succeed (values 'succeed))
      (test 'fail (values 'fail 'succeed))
      (test '(1 2 3) (map (lambda (i) (values (add1 i) i)) '(0 1 2))) ; this produces a warning: "expected a single result in argument #1 of procedure call `(cons (g2272 (##sys#slot g2278 0)) (quote ()))', but received 2 results"
-     (test '(1 2 3) 
-      ((map/call-with-values 
+     (test '(1 2 3)
+      ((map/call-with-values
         (lambda (i) (values (add1 i) i))
         (lambda (more less) more))
        '(0 1 2)))
-     (test '((1 1) (3 3)) 
-      ((map/values (lambda (p) (values (add1 (car p)) (cadr p)))) 
+     (test '((1 1) (3 3))
+      ((map/values (lambda (p) (values (add1 (car p)) (cadr p))))
        '((0 1) (2 3))))
     )
 

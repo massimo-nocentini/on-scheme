@@ -188,6 +188,8 @@
                     (apply Z (map stream:cdr streams))))))
        Z)))
 
+    (define stream:zip (stream:zip-with list))
+
     (define stream:convolution
      (lambda (func scale comb)
       (letrec ((C (Λ (s r)
@@ -289,14 +291,14 @@
        (D (stream:cdr s) (stream:from 1)))))
 
     (define add-series (stream:zip-with +))
-(define sub-series (stream:zip-with -))
+    (define sub-series (stream:zip-with -))
 
     (define scale-series
      (lambda (a)
       (Λ (s)
        ((stream:zip-with *) (stream:repeat a) s))))
 
-(define mul-series (stream:convolution * scale-series add-series))
+    (define mul-series (stream:convolution * scale-series add-series))
 
     (define mul-series*
      (lambda series

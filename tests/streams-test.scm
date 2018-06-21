@@ -44,6 +44,9 @@
      (test '(3 7 5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0) ; 3/8 = 0.375
       ((list○take 20) (radix-expand 3 8 10)))
 
+     (test '((0 0 0) (1 1 1) (2 1 3) (3 2 6) (4 3 10) (5 5 15) (6 8 21) (7 13 28) (8 21 36) (9 34 45)) 
+      ((list○take 10) (stream:zip numbers/nats numbers/fibonacci numbers/triangular)))
+
      (let ((next (stream:iterator numbers/nats)))
       (test '(0 1 2 3) (collect-values (lambda () (values (next) (next) (next) (next))))))
 

@@ -5,6 +5,8 @@
 
  (use numbers data-structures)
 
+ ;(import (prefix streams streams))
+
  (use commons streams)
 
  (define range
