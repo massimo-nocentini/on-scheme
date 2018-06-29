@@ -44,5 +44,5 @@ clean:
 	rm -rf *.so *.import.scm
 
 tests: all deploy-shared-libs
-	cd ../tests/ && make test-all
+	cd ../tests/ && make run-tests
 
