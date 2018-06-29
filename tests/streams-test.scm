@@ -44,8 +44,18 @@
      (test '(3 7 5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0) ; 3/8 = 0.375
       ((list○take 20) (radix-expand 3 8 10)))
 
-     (test '((0 0 0) (1 1 1) (2 1 3) (3 2 6) (4 3 10) (5 5 15) (6 8 21) (7 13 28) (8 21 36) (9 34 45)) 
+     (test '((0 0 0) (1 1 1) (2 1 3) (3 2 6) (4 3 10) (5 5 15) (6 8 21) (7 13 28) (8 21 36) (9 34 45))
       ((list○take 10) (stream:zip numbers/nats numbers/fibonacci numbers/triangular)))
+
+    (test #f ((stream:foldr
+               (lambda (a acc) (and a (stream:car acc)))
+               (lambda () (list (/ 1 0))))
+              (:⁺ #t #t #t #f #t))) ; #f prevents (/ 1 0) from being evaluated
+
+    (test #f ((stream:foldr
+               (lambda (a acc) (and a (stream:car acc)))
+               (lambda () 'useless))
+              (:⁺ #t #t #t #f series:0))) ; #f prevents enumerating zeros forever
 
      (let ((next (stream:iterator numbers/nats)))
       (test '(0 1 2 3) (collect-values (lambda () (values (next) (next) (next) (next))))))
@@ -128,8 +138,8 @@
 
      (test '(0 1 3 6 10 15 21 28 36 45) ((list○take 10) numbers/triangular/+scan))
      (test '(0 1 2 4 7 12 20 33 54 88) ((list○take 10) numbers/fibs/+scan)) ; https://oeis.org/A000071
-     (test 
-      ((list○take 10) numbers/fibs/+scan) 
+     (test
+      ((list○take 10) numbers/fibs/+scan)
       ((list○take 10) ((stream:zip-with -) (stream:cddr numbers/fibs/∞) stream:1s)))
      (test '(1 1 2 6 30 240 3120 65520 2227680 122522400) ((list○take 10) numbers/fibs/∙scan))
 
@@ -139,47 +149,41 @@
     (test '(1 2 3 4 5 6 7 8 9 10) ((list○take 10) (mul-series stream:1s stream:1s)))
     (test '(0 1 3 6 10 15 21 28 36 45) ((list○take 10) (mul-series numbers/nats/∞ stream:1s)))
 
-    (letdelay ((exponential-series (add-series
-                                    stream:1
-                                    (integrate-series exponential-series)))
-               (cosine-series (add-series
-                               stream:1
-                               ((scale-series -1) (integrate-series sine-series))))
-               (sine-series (integrate-series cosine-series)))
+
      (test-error ((list○take 10) (exp-series stream:1)))
-     (test '(1 0 0 0 0 0 0 0 0 0) ((list○take 10) (exp-series stream:0s)))
-     (test '(1 0 0 0 0 0 0 0 0 0) ((list○take 10) (compose-series exponential-series stream:0s)))
+     (test '(1 0 0 0 0 0 0 0 0 0) ((list○take 10) (exp-series series:0)))
+     (test '(1 0 0 0 0 0 0 0 0 0) ((list○take 10) (compose-series taylor/exponential series:0)))
      (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880)
-      ((list○take 10) exponential-series))
+      ((list○take 10) taylor/exponential))
      (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880)
       ((list○take 10) (exp-series `(0 ,@stream:1))))
      (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880)
       ((list○take 10) (exp-series (list->poly '(0 1)))))
      (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880)
-      ((list○take 10) (compose-series exponential-series (list->poly '(0 1)))))
+      ((list○take 10) (compose-series taylor/exponential (list->poly '(0 1)))))
      (test '(1 1 1/2 1/6 1/24 1/120 1/720 1/5040 1/40320 1/362880)
       ((list○take 10) (exp-series (list->poly '(0 1)))))
      (test '(1 1 3/2 13/6 73/24 167/40 4051/720 37633/5040 43817/4480 4596553/362880)
       ((list○take 10) (exp-series `(0 ,@stream:1s))))
      (test '(1 1 3/2 13/6 73/24 167/40 4051/720 37633/5040 43817/4480 4596553/362880)
-      ((list○take 10) (compose-series exponential-series `(0 ,@stream:1s))))
-     (test '(1 0 -1/2 0 1/24 0 -1/720 0 1/40320 0) ((list○take 10) cosine-series))
-     (test '(0 1 0 -1/6 0 1/120 0 -1/5040 0 1/362880) ((list○take 10) sine-series))
+      ((list○take 10) (compose-series taylor/exponential `(0 ,@stream:1s))))
+     (test '(1 0 -1/2 0 1/24 0 -1/720 0 1/40320 0) ((list○take 10) taylor/cosine))
+     (test '(0 1 0 -1/6 0 1/120 0 -1/5040 0 1/362880) ((list○take 10) taylor/sine))
     (let ((sine2+cosine2 (add-series
-                          (mul-series sine-series sine-series)
-                          (mul-series cosine-series cosine-series)))
-          (tangent-series (division-series sine-series cosine-series))
+                          (mul-series taylor/sine taylor/sine)
+                          (mul-series taylor/cosine taylor/cosine)))
+          (tangent-series (division-series taylor/sine taylor/cosine))
           (arctan-series (integrate-series (division-series stream:1 (list->poly '(1 0 1)))))
          )
      (test '(1 0 0 0 0 0 0 0 0 0) ((list○take 10) sine2+cosine2))
      (test '(0 1 0 1/3 0 2/15 0 17/315 0 62/2835) ((list○take 10) tangent-series))
      (test '(0 1 0 -1/3 0 1/5 0 -1/7 0 1/9) ((list○take 10) arctan-series))
-     (test ((list○take 10) stream:0s)
+     (test ((list○take 10) series:0)
       ((list○take 10)
        ((stream:zip-with -)
-        (division-series sine-series cosine-series) ; tangent-series
+        (division-series taylor/sine taylor/cosine) ; tangent-series
         (revert-series arctan-series)))) ; (equal? ((compose T arctan-series) x) x) ↔ (equal? T tangent-series)
-    ))
+    )
     (test '(1 -1 0 0 0 0 0 0 0 0) ((list○take 10) (inverse-series stream:1s)))
     (test '(1 -2 1 0 0 0 0 0 0 0) ((list○take 10) (inverse-series numbers/nats>0)))
     (test '(1 0 0 0 0 0 0 0 0 0) ((list○take 10) (mul-series numbers/nats>0 (inverse-series numbers/nats>0))))
@@ -214,7 +218,7 @@
             (1 9 36 84 126 126 84 36 9 1))
      ((list○take 10) (riordan-array stream:1s stream:1s)))
     (test ; h(t) = tA(h(t)) where h(t) = 1/(1-t), aka the Pascal comp inverse
-     ((list○take 10) (division-series (formalvar-series 1) `(1 1 . ,stream:0s)))
+     ((list○take 10) (division-series (formalvar-series 1) `(1 1 . ,series:0)))
      ((list○take 10) (revert-series (stream:cons 0 stream:1s))))
 (let ((rows ((list○take 10)
              (compose-series ; multivariate
