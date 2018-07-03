@@ -51,17 +51,21 @@
     (define integrate-series
      (Λ (s)
       (letrec ((I (Λ (s n)
-                   (stream:dest/car+cdr ((s (scar scdr))
-                                         (n (ncar ncdr)))
-                    (stream:cons (/ scar ncar) (I scdr ncdr))))))
+                   (stream:dest/car+cdr (s ∅)
+                    ((scar scdr) (stream:dest/car+cdr (n ∅)
+                                  ((ncar ncdr) (stream:cons 
+                                                (/ scar ncar) 
+                                                (I scdr ncdr)))))))))
        (stream:cons 0 (I s (stream:from 1))))))
 
     (define derivative-series
      (Λ (s)
       (letrec ((D (Λ (s n)
-                   (stream:dest/car+cdr ((s (scar scdr))
-                                         (n (ncar ncdr)))
-                    (stream:cons (* scar ncar) (D scdr ncdr))))))
+                   (stream:dest/car+cdr (s ∅)
+                    ((scar scdr) (stream:dest/car+cdr (n ∅)
+                                  ((ncar ncdr) (stream:cons 
+                                                (* scar ncar) 
+                                                (D scdr ncdr)))))))))
        (D (stream:cdr s) (stream:from 1)))))
 
     (define add-series (stream:zip-with +))
@@ -94,10 +98,12 @@
 
     (define inverse-series
      (Λ (s)
-      (stream:dest/car+cdr ((s (scar scdr)))
-       (letdelay ((I (stream:cons (/ 1 scar) ((scale-series (/ -1 scar))
-                                              (mul-series scdr I)))))
-        I))))
+      (stream:dest/car+cdr (s ∅)
+       ((scar scdr) (letdelay ((I (stream:cons 
+                                   (/ 1 scar) 
+                                   ((scale-series (/ -1 scar))
+                                    (mul-series scdr I)))))
+                     I)))))
 
     (define division-series&inversion
      (lambda (num denum)
@@ -105,14 +111,14 @@
 
     (define division-series
      (Λ (α β)
-      (stream:dest/car+cdr ((α (a α-cdr))
-                            (β (b β-cdr)))
-       (cond
-        ((and (zero? a) (zero? b)) (division-series α-cdr β-cdr))
-        (else (let ((q (/ a b)))
-               (stream:cons q (division-series
-                               (sub-series α-cdr ((scale-series q) β-cdr))
-                               β))))))))
+      (stream:dest/car+cdr (α ∅)
+       ((a α-cdr) (stream:dest/car+cdr (β ∅)
+                   ((b β-cdr) (cond
+                               ((and (zero? a) (zero? b)) (division-series α-cdr β-cdr))
+                               (else (let ((q (/ a b)))
+                                      (stream:cons q (division-series
+                                                      (sub-series α-cdr ((scale-series q) β-cdr))
+                                                      β)))))))))))
 
     (define integral-series&co
      (lambda (init dt)
@@ -123,8 +129,8 @@
     (define integral-series&rec
      (lambda (init dt)
       (Λ (s)
-       (stream:cons init (stream:dest/car+cdr ((s (scar scdr) (else stream:empty)))
-                          ((integral-series&rec (+ (* dt scar) init) dt) scdr))))))
+       (stream:cons init (stream:dest/car+cdr (s ∅)
+                          ((scar scdr) ((integral-series&rec (+ (* dt scar) init) dt) scdr)))))))
 
     (define ode-solve-1st
      (lambda (integral)
@@ -226,10 +232,10 @@
 
     (define riordan-array
      (Λ (d h)
-      (stream:dest/car+cdr ((d (dcar dcdr)))
-       (stream:cons
-        (list dcar)
-        ((stream:zip-with cons) dcdr (riordan-array (mul-series d h) h))))))
+      (stream:dest/car+cdr (d ∅)
+       ((dcar dcdr) (stream:cons
+                     (list dcar)
+                     ((stream:zip-with cons) dcdr (riordan-array (mul-series d h) h)))))))
 
     (define formalvar-series
      (Λ (n)
@@ -254,20 +260,19 @@
                             ((equal? β₀ series:0)  (values mul-series* stream:const))  ; bivariate series
                             (else (error "compose-series" "β₀ neither 0 nor series:0" β₀))))))
        (letrec ((C (Λ (α β)
-                    (stream:dest/car+cdr ((α (a αs))
-                                          (β (b βs)))
-                     (stream:cons (B a) (M (C αs β) βs))))))
+                    (stream:dest/car+cdr (α ∅)
+                     ((a αs) (stream:dest/car+cdr (β ∅)
+                              ((b βs) (stream:cons (B a) (M (C αs β) βs)))))))))
         (C α β)))))
 
     (define revert-series
      (Λ (α)
-      (stream:dest/car+cdr ((α (α₀ αs)))
-       (cond
-        ((equal? α₀ 0)
-         (letdelay ((R (stream:cons 0 (inverse-series
-                                       (compose-series αs R)))))
-          R))
-        (else (error "revert-series" "α₀ not zero" α₀))))))
+      (stream:dest/car+cdr (α ∅)
+       ((α₀ αs) (cond
+                 ((equal? α₀ 0) (letdelay ((R (stream:cons 0 (inverse-series
+                                                              (compose-series αs R)))))
+                                 R))
+                 (else (error "revert-series" "α₀ not zero" α₀)))))))
 
  (define divisable-by?
   (lambda (y)
@@ -276,10 +281,11 @@
 
  (define eratosthenes
   (Λ (s)
-   (stream:dest/car+cdr ((s (prime primes)))
-    (stream:cons prime (eratosthenes
-                        ((stream:filter (compose not (divisable-by? prime)))
-                         primes))))))
+   (stream:dest/car+cdr s
+    ((prime primes) (stream:cons prime (eratosthenes
+                                        ((stream:filter 
+                                          (compose not (divisable-by? prime))) primes))))
+    (else (error "Primes are infinite.")))))
 
  (define fibonacci/stateful
   (Λ (a b)
@@ -399,11 +405,11 @@
  (define prime?
   (lambda (n)
    (letrec ((P (lambda (α)
-                (stream:dest/car+cdr ((α (α₀ α⁺)))
-                 (cond
-                  ((equal? n α₀) #t)
-                  ((< n α₀) #f)
-                  (else (P α⁺)))))))
+                (stream:dest/car+cdr (α ∅)
+                 ((α₀ α⁺) (cond
+                           ((equal? n α₀) #t)
+                           ((< n α₀) #f)
+                           (else (P α⁺))))))))
     (P primes/eratosthenes))))
 
     (define-delay ; mutually recursive definition
