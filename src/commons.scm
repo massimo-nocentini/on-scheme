@@ -108,4 +108,13 @@
     (define ⁻¹
       (lambda (x) (/ 1 x)))
 
+    (define display-on-port
+     (lambda (port)
+      (lambda (v)
+       (display v port))))
+
+    (define-syntax test-fail
+     (syntax-rules ()
+      ((test-fail sexp) (test-assert (not sexp)))))
+
 )

@@ -1,5 +1,9 @@
 
-current: commons streams series deploy-shared-libs
+
+current: commons streams microkanren deploy-shared-libs
+	cd ../tests/ && make microkanren-test
+
+current1: commons streams series deploy-shared-libs
 	cd ../tests/ && make streams-test
 
 commons:
@@ -34,7 +38,11 @@ series:
 	csc -dynamic series.scm -J
 	csc -dynamic series.import.scm -J
 
-all: clean commons promise continuations collatz seasoned-schemer unionfind streams series
+microkanren:
+	csc -dynamic microkanren.scm -J
+	csc -dynamic microkanren.import.scm -J
+
+all: clean commons promise continuations collatz seasoned-schemer unionfind streams series microkanren
 	# pass
 
 deploy-shared-libs:

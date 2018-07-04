@@ -39,4 +39,9 @@ streams-test:
 	mv streams-test executables/
 	./executables/streams-test
 
+microkanren-test:
+	csc -X numbers-syntax microkanren-test.scm # according to http://wiki.call-cc.org/eggref/4/numbers#compiled-code
+	mv microkanren-test executables/
+	./executables/microkanren-test
+
 run-tests: promise-test collatz-test continuations-test learning-test ackermann-test seasoned-schemer-test unionfind-test streams-test
