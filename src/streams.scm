@@ -353,5 +353,18 @@
                     (P (stream:cdr s)))))) ; consecutive overlapping pairs
        P)))
 
+    (define stream:§    ; monadic `mplus`
+     (Λ (α β)
+      (stream:dest/car+cdr α
+       ((α₀ α₊) (stream:cons α₀ (stream:§ β α₊)))
+       (else β))))
+
+    (define stream:>>=  ; monadic `bind`
+     (Λ (α β)
+      (stream:dest/car+cdr (β ∅)
+       ((β₀ β₊) (stream:dest/car+cdr (α ∅)
+                 ((α₀ α₊) (stream:§ (β₀ α₀) (stream:>>= α₊ β₊))))))))
+       
+
 
     )

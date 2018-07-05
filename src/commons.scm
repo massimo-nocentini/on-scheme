@@ -105,6 +105,7 @@
         (set! acc (f x acc))
         acc))))
 
+
     (define ⁻¹
       (lambda (x) (/ 1 x)))
 
@@ -116,5 +117,7 @@
     (define-syntax test-fail
      (syntax-rules ()
       ((test-fail sexp) (test-assert (not sexp)))))
+
+    (define number->symbol (○ string->symbol number->string))
 
 )

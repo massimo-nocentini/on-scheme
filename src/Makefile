@@ -1,6 +1,6 @@
 
 
-current: commons streams microkanren deploy-shared-libs
+current: commons streams unionfind microkanren deploy-shared-libs
 	cd ../tests/ && make microkanren-test
 
 current1: commons streams series deploy-shared-libs
