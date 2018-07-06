@@ -57,6 +57,11 @@
                (lambda () 'useless))
               (:⁺ #t #t #t #f series:0))) ; #f prevents enumerating zeros forever
 
+    (test '(0 1 2 0 1 2 0 1 2 0) ((list○take 10) (stream:§ 
+                                                  (stream:repeat 0) 
+                                                  (stream:repeat 1) 
+                                                  (stream:repeat 2)))) 
+
      (let ((next (stream:iterator numbers/nats)))
       (test '(0 1 2 3) (collect-values (lambda () (values (next) (next) (next) (next))))))
 

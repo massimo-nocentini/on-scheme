@@ -1,6 +1,6 @@
 
 
-current: commons streams unionfind microkanren deploy-shared-libs
+current: commons streams unionfind microkanren reasoned-schemer deploy-shared-libs
 	cd ../tests/ && make microkanren-test
 
 current1: commons streams series deploy-shared-libs
@@ -41,6 +41,10 @@ series:
 microkanren:
 	csc -dynamic microkanren.scm -J
 	csc -dynamic microkanren.import.scm -J
+
+reasoned-schemer:
+	csc -dynamic reasoned-schemer.scm -J
+	csc -dynamic reasoned-schemer.import.scm -J
 
 all: clean commons promise continuations collatz seasoned-schemer unionfind streams series microkanren
 	# pass

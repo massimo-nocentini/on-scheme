@@ -353,18 +353,39 @@
                     (P (stream:cdr s)))))) ; consecutive overlapping pairs
        P)))
 
-    (define stream:§    ; monadic `mplus`
+    #;(define stream:§    ; monadic `mplus`
      (Λ (α β)
+       #;(cond
+        ((stream:null? α) (delay-force β))
+        (else (stream:cons (stream:car α) (delay-force (stream:§ β (stream:cdr α))))))
       (stream:dest/car+cdr α
        ((α₀ α₊) (stream:cons α₀ (stream:§ β α₊)))
        (else β))))
 
+    (define stream:§    ; monadic `mplus`
+     (Λ streams
+      (cond
+       ((null? streams) stream:empty)
+       (else (let-values (((α streams₊) (car+cdr streams)))
+              (stream:dest/car+cdr α
+               ((α₀ α₊) (stream:cons α₀ (apply stream:§ (append streams₊ (list α₊)))))
+               (else (apply stream:§ streams₊))))))))
+
+    #;(define stream:>>=  ; monadic `bind`
+     (lambda (m+)
+      (letrec ((>>= (Λ (α β)
+                     (stream:dest/car+cdr (β ∅)
+                      ((β₀ β₊) (stream:dest/car+cdr (α ∅)
+                          ((α₀ α₊) (m+ (β₀ α₀) (>>= α₊ β₊)))))))))
+       >>=)))
+       
     (define stream:>>=  ; monadic `bind`
      (Λ (α β)
-      (stream:dest/car+cdr (β ∅)
+      (stream:dest/car+cdr β
        ((β₀ β₊) (stream:dest/car+cdr (α ∅)
-                 ((α₀ α₊) (stream:§ (β₀ α₀) (stream:>>= α₊ β₊))))))))
-       
+           ((α₀ α₊) (stream:§ (β₀ α₀) (stream:>>= α₊ β₊)))))
+       (else (error "binder stream should match the object one.")))))
+     
 
 
     )
