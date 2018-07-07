@@ -164,10 +164,10 @@
   ))
 
  (define-syntax run/with-symbols
-  (syntax-rules (∞ ∘)
+  (syntax-rules (∞)
    ((run/with-symbols ∞ sexp ...) 
     ((get/variable->symbol stream:->list) (run sexp ...)))
-   ((run/with-symbols ∘ sexp ...) 
+   ((run/with-symbols #t sexp ...) 
     ((lambda (α) (if (stream:null? α) #f (stream:car α))) (run sexp ...)))
    ((run/with-symbols n sexp ...) 
     ((get/variable->symbol (list○take n)) (run sexp ...)))))

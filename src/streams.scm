@@ -31,7 +31,7 @@
 
     (define-syntax stream:cons
      (syntax-rules ()
-      ((stream:cons a d) (delay (cons a d)))))
+      ((stream:cons a d) (delay-force (cons a d)))))
 
     (define-syntax letdelay
      (syntax-rules ()
@@ -258,10 +258,10 @@
               (upper (Λ (s r)
                       (stream:dest/car+cdr s
                        ((scar scdr) (stream:dest/car+cdr r
-                                     ((rcar rcdr) (stream:cons 
+                                     ((rcar rcdr) (stream:cons
                                                    (tuple scar rcar)
                                                    (interleave
-                                                    ((stream:map (lambda (ri) 
+                                                    ((stream:map (lambda (ri)
                                                                   (tuple scar ri))) rcdr)
                                                     (upper scdr rcdr))))
                                      (else s)))
@@ -272,7 +272,7 @@
                                      ((rcar rcdr) (stream:cons
                                                    (tuple scar rcar)
                                                    (interleave
-                                                    ((stream:map (lambda (si) 
+                                                    ((stream:map (lambda (si)
                                                                   (tuple si rcar))) scdr)
                                                     (lower scdr rcdr))))
                                      (else s)))
@@ -284,7 +284,7 @@
                                                  (tuple scar rcar)
                                                  (interleave
                                                   (interleave
-                                                   ((stream:map (lambda (ri) 
+                                                   ((stream:map (lambda (ri)
                                                                  (tuple scar ri))) rcdr)
                                                    (all scdr rcdr))
                                                   ((stream:map (lambda (si) (tuple si rcar))) scdr))))
@@ -309,7 +309,7 @@
                                   ((rcar rcdr) (stream:cons
                                                 (make-tuple scar rcar)
                                                 (interleave
-                                                 ((stream:map (lambda (ri) 
+                                                 ((stream:map (lambda (ri)
                                                                (make-tuple scar ri))) rcdr)
                                                  (B scdr rcdr))))
                                   (else s)))
@@ -353,16 +353,13 @@
                     (P (stream:cdr s)))))) ; consecutive overlapping pairs
        P)))
 
-    #;(define stream:§    ; monadic `mplus`
+    (define stream:§₂   ; binary `mplus`, for pure recursion.
      (Λ (α β)
-       #;(cond
-        ((stream:null? α) (delay-force β))
-        (else (stream:cons (stream:car α) (delay-force (stream:§ β (stream:cdr α))))))
       (stream:dest/car+cdr α
-       ((α₀ α₊) (stream:cons α₀ (stream:§ β α₊)))
+       ((α₀ α₊) (stream:cons α₀ (stream:§₂ β α₊)))
        (else β))))
 
-    (define stream:§    ; monadic `mplus`
+    (define stream:§    ; monadic `mplus`, for a *finite* number of streams.
      (Λ streams
       (cond
        ((null? streams) stream:empty)
@@ -371,21 +368,13 @@
                ((α₀ α₊) (stream:cons α₀ (apply stream:§ (append streams₊ (list α₊)))))
                (else (apply stream:§ streams₊))))))))
 
-    #;(define stream:>>=  ; monadic `bind`
-     (lambda (m+)
-      (letrec ((>>= (Λ (α β)
-                     (stream:dest/car+cdr (β ∅)
-                      ((β₀ β₊) (stream:dest/car+cdr (α ∅)
-                          ((α₀ α₊) (m+ (β₀ α₀) (>>= α₊ β₊)))))))))
-       >>=)))
-       
     (define stream:>>=  ; monadic `bind`
      (Λ (α β)
-      (stream:dest/car+cdr β
-       ((β₀ β₊) (stream:dest/car+cdr (α ∅)
-           ((α₀ α₊) (stream:§ (β₀ α₀) (stream:>>= α₊ β₊)))))
-       (else (error "binder stream should match the object one.")))))
-     
+      (stream:dest/car+cdr (α ∅)
+       ((α₀ α₊) (stream:dest/car+cdr β
+                 ((β₀ β₊) (stream:§₂ (β₀ α₀) (stream:>>= α₊ β₊)))
+                 (else (error "binders stream should match the bindees one.")))))))
+
 
 
     )
