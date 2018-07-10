@@ -44,4 +44,4 @@ microkanren-test:
 	mv microkanren-test executables/
 	./executables/microkanren-test
 
-run-tests: promise-test collatz-test continuations-test learning-test ackermann-test seasoned-schemer-test unionfind-test streams-test
+run-tests: promise-test collatz-test continuations-test learning-test ackermann-test seasoned-schemer-test unionfind-test streams-test microkanren-test

@@ -9,16 +9,16 @@
 
  (define-record status ≡ depth)
 
+ (define-record-printer status
+  (lambda (s out)
+   ;(display (status-≡ s) out)
+   (display ((○ number->string status-depth) s) out)))
+
  (define status-copy
   (lambda (s #!key (D identity))
    (make-status
     ((○ unionfind-copy status-≡) s)
     ((○ D status-depth) s))))
-
- (define status/increase-depth
-  (lambda (s)
-   (status-depth-set! s (add1 (status-depth s)))
-   s))
 
  (define ε
   (lambda ()
@@ -89,8 +89,8 @@
  (define ∨
   (lambda goals
    (Λ (s)
-    (apply stream:§ (map 
-                     (lambda (g) (g (status-copy s D: add1))) 
+    (apply stream:§ (map
+                     (lambda (g) (g (status-copy s D: add1)))
                      goals)))))
 
     (define V/gensym
@@ -141,7 +141,9 @@
       (lambda (s)
        (let* ((v₀ ((walk* (unionfind-↑ (status-≡ s))) v))
               (s₀ (reify/status v₀ (ε))))
-        ((walk* (unionfind-↑! (status-≡ s₀))) v₀)))))
+        (values
+         ((walk* (unionfind-↑! (status-≡ s₀))) v₀)
+         (status-depth s))))))
 
     (define unify
      (lambda (∪ ↑)
@@ -179,41 +181,27 @@
                ((stream:map (reify/var q)) (g (ε)))))
   ))
 
- (define-syntax run/with-symbols
-  (syntax-rules (∞)
-   ((run/with-symbols ∞ sexp ...)
-    ((get/variable->symbol stream:->list) (run sexp ...)))
-   ((run/with-symbols #t sexp ...)
-    ((lambda (α) (if (stream:null? α) #f (stream:car α))) (run sexp ...)))
-   ((run/with-symbols n sexp ...)
-    ((get/variable->symbol (list○take n)) (run sexp ...)))))
-
     (define get/variable->symbol
      (lambda (get)
       (○ get (stream:map variable->symbol))))
+
+    (define-syntax run/with-symbols
+     (syntax-rules (∞ ↓)
+
+      ((run/with-symbols ↓ ∞ sexp ...) ((get/variable->symbol stream:->list) (run sexp ...)))
+      ((run/with-symbols ↓ n sexp ...) ((get/variable->symbol (list○take n)) (run sexp ...)))
+
+      ((run/with-symbols #t sexp ...)
+       ((lambda (α) (if (stream:null? α) #f (stream:car α))) (run sexp ...)))
+
+      ((run/with-symbols body ...)
+       (map (lambda (s)  (car (car s))) (run/with-symbols ↓ body ...)))))
+
 
     (define ifº
      (lambda (goal otherwise)
       (Λ (s)
        (stream:§ (goal s) (otherwise s)))))
-
-    #;(define-syntax condº
-     (syntax-rules (else ¦ §)
-      ((condº ¦ (g₀ ...)) ((ifº stream:append) (∴ g₀ ...) ✗))
-      ((condº ¦ (g₀ ...) (g₁ ...) ... (else otherwise)) (condº ¦ (g₀ ...) (g₁ ...) ... (✓ otherwise)))
-      ((condº ¦ (g₀ ...) (g₁ ...) ...) ((ifº stream:append) (∴ g₀ ...) (condº ¦ (g₁ ...) ...)))
-      ((condº § (g₀ ...)) ((ifº stream:§) (∧ g₀ ...) ✗))
-      ((condº § (g₀ ...) (g₁ ...) ... (else otherwise)) (condº § (g₀ ...) (g₁ ...) ... (✓ otherwise)))
-      ((condº § (g₀ ...) (g₁ ...) ...) ((ifº stream:§) (∧ g₀ ...) (condº § (g₁ ...) ...)))))
-
-    #;(define-syntax condº
-     (syntax-rules (else ¦ §)
-      ((condº ¦) ✗)
-      ((condº ¦ (g₀ ...) ... (else otherwise)) (condº ¦ (g₀ ...) ... (✓ otherwise)))
-      ((condº ¦ (g₀ ...) (g₁ ...) ...) ((ifº stream:append) (∴ g₀ ...) (condº ¦ (g₁ ...) ...)))
-      ((condº §) ✗)
-      ((condº § (g₀ ...) ... (else otherwise)) (condº § (g₀ ...) ... (✓ otherwise)))
-      ((condº § (g₀ ...) (g₁ ...) ...) ((ifº stream:§) (∧ g₀ ...) (condº § (g₁ ...) ...)))))
 
     (define-syntax condº
      (syntax-rules (else)
@@ -230,15 +218,11 @@
 
      ))
 
-
- #;(define iterative-deepening
+ (define deepening
   (lambda (depth)
    (lambda (g)
     (Λ (s)
-     (letrec ((I (lambda (α)
-                  (stream:dest/car+cdr (α ∅)
-                   ((α₀ α₊) (cond
-                       ((> (status-depth a) depth) )))))))
-      (I (g s)))))))
+     ((stream:iterative-deepening 0 depth status-depth) (g s))))))
+
 
 )

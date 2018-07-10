@@ -126,4 +126,9 @@
 
     (define number->symbol (○ string->symbol number->string))
 
+    (define within?
+     (lambda (m M)
+      (lambda (n)
+       (<= m n M))))
+
 )
