@@ -25,6 +25,12 @@
  (define fapply  (curry₁ apply))
  (define ffilter (curry₁ filter))
 
+    (define $  ; Haskell-like suspended application
+     (lambda args
+      (lambda functions
+       (let ((apps (map (lambda (f) (apply f args)) functions)))
+        (apply values apps)))))
+
  (define identity* (lambda args args))
 
  (define subscripts
