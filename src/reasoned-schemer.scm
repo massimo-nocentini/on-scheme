@@ -72,6 +72,14 @@
                       (dyckº γ)
                       (appendº `(○ . ,β) `(● . ,γ) α)))))))
 
-
+    (define fibonacciº
+     (lambda (depth n α)
+      (cond
+       ((zero? depth)   (≡ α (list n)))
+       (else            (fresh (β γ)
+                         (∧ 
+                          (fibonacciº (sub1 depth) (- 1 n) β)
+                          (fibonacciº (sub1 depth) (- 2 n) γ)
+                          (appendº β γ α)))))))
 
 ) ; module's closing paren

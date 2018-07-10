@@ -106,7 +106,10 @@
                    (stream:dest/car+cdr (s ∅)
                     ((scar scdr) (cond
                                   ((and * (promise? scar)) (stream:cons (M scar) (M scdr)))
-                                  (else (stream:cons (collect-values (λ () (func scar))) (M scdr)))))))))
+                                  ;(else (stream:cons (collect-values (λ () (func scar))) (M scdr)))))))))
+                                  (else (stream:cons 
+                                         (collect-values (λ () (func scar)))
+                                         (M scdr)))))))))
        M)))
 
 

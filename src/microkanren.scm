@@ -195,8 +195,7 @@
        ((lambda (α) (if (stream:null? α) #f (stream:car α))) (run sexp ...)))
 
       ((run/with-symbols body ...)
-       (map (lambda (s)  (car (car s))) (run/with-symbols ↓ body ...)))))
-
+       (map car (run/with-symbols ↓ body ...)))))
 
     (define ifº
      (lambda (goal otherwise)

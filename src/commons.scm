@@ -31,7 +31,11 @@
        (let ((apps (map (lambda (f) (apply f args)) functions)))
         (apply values apps)))))
 
- (define identity* (lambda args args))
+    (define identity* 
+     (lambda args
+      (cond
+       ((one? (length args)) (car args))
+       (else args))))
 
  (define subscripts
   (let ((H (make-hash-table)))
@@ -111,6 +115,9 @@
         (set! acc (f x acc))
         acc))))
 
+    (define one?
+     (lambda (n)
+      (equal? n 1))) 
 
     (define ⁻¹
       (lambda (x) (/ 1 x)))
@@ -130,5 +137,17 @@
      (lambda (m M)
       (lambda (n)
        (<= m n M))))
+
+    (define group
+     (lambda (key post)
+      (lambda (l)
+       (let* ((H (make-hash-table))
+              (U (lambda (l₀) 
+                  (let ((k (key l₀)))
+                   (cond
+                    ((hash-table-exists? H k) (hash-table-set! H k (cons l₀ (hash-table-ref H k))))
+                    (else                     (hash-table-set! H k (list l₀))))))))
+        (for-each U l)
+        (map post (hash-table->alist H))))))
 
 )
