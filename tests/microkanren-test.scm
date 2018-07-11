@@ -96,6 +96,7 @@
          (() (0 1 2 3 4 5)))
   (run/with-symbols ∞ (v w) (appendº w v '(0 1 2 3 4 5)))))
 
+
   (test '(()
           (○ ●)
           (○ ○ ● ●)
@@ -220,8 +221,25 @@
      (map (lambda (n)
            ((○
              (fmap cadr)
-             (lambda (l) (sort l (lambda (p q) (< (car p) (car q)))))
+             (lambda (l) (sort l (lambda args (apply < (map car args)))))
              (group identity (lambda (p) (list (car p) (length (cdr p))))))
             (car (run/with-symbols ∞ (α) (fibonacciº n 2 α)))))
       (list-tabulate 9 identity)))
 
+    (test '((1) 
+            (1 1) 
+            (1 2 1) 
+            (1 3 3 1) 
+            (1 4 6 4 1) 
+            (1 5 10 10 5 1) 
+            (1 6 15 20 15 6 1) 
+            (1 7 21 35 35 21 7 1) 
+            (1 8 28 56 70 56 28 8 1))
+     (map (lambda (n)
+           ((○
+             (fmap cadr)
+             (lambda (l) 
+              (sort l (lambda args (apply (tuple/pred? >=) (map car args)))))
+             (group identity (lambda (p) (list (car p) (length (cdr p))))))
+            (car (run/with-symbols ∞ (α) (tartagliaº n 1 1 α)))))
+      (list-tabulate 9 identity)))

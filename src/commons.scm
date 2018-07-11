@@ -115,6 +115,8 @@
         (set! acc (f x acc))
         acc))))
 
+    (define sub2 (○ sub1 sub1))
+
     (define one?
      (lambda (n)
       (equal? n 1))) 
@@ -149,5 +151,18 @@
                     (else                     (hash-table-set! H k (list l₀))))))))
         (for-each U l)
         (map post (hash-table->alist H))))))
+
+    (define tuple/pred?
+     (lambda (pred?)
+      (letrec ((P (lambda tuples
+                   (cond
+                    ((apply pred? (map car tuples)) 
+                     (let ((cdrs (map cdr tuples)))
+                      (cond
+                       ((every null? cdrs) #t)
+                       ((every (○ not null?) cdrs) (apply P cdrs))
+                       (else #f))))
+                    (else #f)))))
+      P)))
 
 )

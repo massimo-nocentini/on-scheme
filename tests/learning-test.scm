@@ -141,6 +141,10 @@
      (test '((1 1) (3 3))
       ((map/values (lambda (p) (values (add1 (car p)) (cadr p))))
        '((0 1) (2 3))))
+
+     (test #t ((tuple/pred? <) '(1 2) '(2 3) '(3 4)))
+     (test #f ((tuple/pred? <) '(1 5) '(2 3) '(3 4)))
+     (test #f ((tuple/pred? <) '(1 5) '(2) '(3 4)))
     )
 
 (test-exit)

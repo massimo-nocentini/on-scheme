@@ -4,6 +4,8 @@
  (import chicken scheme)
 
  (use streams microkanren)
+ 
+ (use commons)
 
  (define nullº
   (lambda (l)
@@ -77,9 +79,19 @@
       (cond
        ((zero? depth)   (≡ α (list n)))
        (else            (fresh (β γ)
-                         (∧ 
-                          (fibonacciº (sub1 depth) (- 1 n) β)
-                          (fibonacciº (sub1 depth) (- 2 n) γ)
+                         (∧
+                          (fibonacciº (sub1 depth) (sub1 n) β)
+                          (fibonacciº (sub1 depth) (sub2 n) γ)
+                          (appendº β γ α)))))))
+
+    (define tartagliaº
+     (lambda (depth n k α)
+      (cond
+       ((zero? depth)   (≡ α (list (list n k))))
+       (else            (fresh (β γ)
+                         (∧
+                          (tartagliaº (sub1 depth) (sub1 n) (sub1 k) β)
+                          (tartagliaº (sub1 depth) (sub1 n) k γ)
                           (appendº β γ α)))))))
 
 ) ; module's closing paren
