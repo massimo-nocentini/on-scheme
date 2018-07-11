@@ -46,7 +46,7 @@ reasoned-schemer:
 	csc -dynamic reasoned-schemer.scm -J
 	csc -dynamic reasoned-schemer.import.scm -J
 
-all: clean commons promise continuations collatz seasoned-schemer unionfind streams series microkanren
+all: clean commons promise continuations collatz seasoned-schemer unionfind streams series microkanren reasoned-schemer
 	# pass
 
 deploy-shared-libs:
