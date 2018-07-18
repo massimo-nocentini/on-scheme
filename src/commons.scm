@@ -24,6 +24,10 @@
  (define fmap    (curry₁ map))
  (define fapply  (curry₁ apply))
  (define ffilter (curry₁ filter))
+ (define fsort
+  (lambda (key ⊂)
+   (lambda (s)
+    (sort s (lambda (p q) (⊂ (key p) (key q)))))))
 
     (define $  ; Haskell-like suspended application
      (lambda args

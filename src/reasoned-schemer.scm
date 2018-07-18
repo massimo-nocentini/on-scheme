@@ -4,7 +4,7 @@
  (import chicken scheme)
 
  (use streams microkanren)
- 
+
  (use commons)
 
  (define nullº
@@ -93,5 +93,73 @@
                           (tartagliaº (sub1 depth) (sub1 n) (sub1 k) β)
                           (tartagliaº (sub1 depth) (sub1 n) k γ)
                           (appendº β γ α)))))))
+
+    (define stacksort_º
+     (lambda (R O S I)
+      (condº
+       ((nullº S) (nullº I) (≡ R O))
+       ((fresh (a d s)
+         (∧
+          (consº a d I)
+          (consº a S s)
+          (stacksortº R O s d))))
+       ((fresh (a d o) (∧ (consº a d S) (consº a O o) (stacksortº R o d I)))))))
+
+    (define stacksort__º
+     (lambda (P R O S I path)
+      (condº
+       ((nullº S) (nullº I) (≡ R O) (≡ P path))
+       ((fresh (a d s) (∧ (consº a d I) (consº a S s) (stacksortº P R O s d (cons #\) path)))))
+       ((fresh (a d o) (∧ (consº a d S) (consº a O o) (stacksortº P R o d I (cons #\( path))))))))
+
+    (define stacksortº
+     (lambda (P R I)
+      (letrec ((ssº (lambda (O S I path)
+                    (condº
+                     ((nullº S) (nullº I) (≡ R O) (≡ P path))
+                     ((fresh (a d s) (∧
+                                      (consº a d I)
+                                      (consº a S s)
+                                      (ssº O s d (cons #\) path)))))
+                     ((fresh (a d o) (∧
+                                      (consº a d S)
+                                      (consº a O o)
+                                      (ssº o d I (cons #\( path)))))))))
+       (ssº '() '() I '()))))
+
+    (define 2stacksort_º
+     (lambda (R O S₂ S₁ I)
+      (condº
+       ((nullº S₂) (nullº S₁) (nullº I) (≡ R O))
+       ((fresh (a d s) (∧ (consº a d I) (consº a S₁ s)  (2stacksortº R O S₂ s d))))
+       ((fresh (a d s) (∧ (consº a d S₁) (consº a S₂ s) (2stacksortº R O s d I))))
+       ((fresh (a d o) (∧ (consº a d S₂) (consº a O o)  (2stacksortº R o d S₁ I)))))))
+
+    (define 2stacksort__º
+     (lambda (P R O S₂ S₁ I path)
+      (condº
+       ((nullº S₂) (nullº S₁) (nullº I) (≡ R O) (≡ P path))
+       ((fresh (a d s) (∧ (consº a d I) (consº a S₁ s)  (2stacksortº P R O S₂ s d (cons #\) path)))))
+       ((fresh (a d s) (∧ (consº a d S₁) (consº a S₂ s) (2stacksortº P R O s d I (cons #\- path)))))
+       ((fresh (a d o) (∧ (consº a d S₂) (consº a O o)  (2stacksortº P R o d S₁ I (cons #\( path))))))))
+
+    (define 2stacksortº
+     (lambda (P R I)
+      (letrec ((2ssº (lambda (O S₂ S₁ I path)
+                      (condº
+                       ((nullº S₂) (nullº S₁) (nullº I) (≡ R O) (≡ P path))
+                       ((fresh (a d s) (∧
+                                        (consº a d I)
+                                        (consº a S₁ s)
+                                        (2ssº O S₂ s d (cons #\) path)))))
+                       ((fresh (a d s) (∧
+                                        (consº a d S₁)
+                                        (consº a S₂ s)
+                                        (2ssº O s d I (cons #\- path)))))
+                       ((fresh (a d o) (∧
+                                        (consº a d S₂)
+                                        (consº a O o)
+                                        (2ssº o d S₁ I (cons #\( path)))))))))
+       (2ssº '() '() '() I '()))))
 
 ) ; module's closing paren
