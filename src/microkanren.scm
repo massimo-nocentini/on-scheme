@@ -11,14 +11,14 @@
 
  (define-record-printer status
   (lambda (s out)
-   ;(display (status-≡ s) out)
+   (display (status-≡ s) out)
    (display ((○ number->string status-depth) s) out)))
 
  (define status-copy
-  (lambda (s #!key (D identity))
+  (lambda (s)
    (make-status
     ((○ unionfind-copy status-≡) s)
-    ((○ D status-depth) s))))
+    ((○ identity status-depth) s))))
 
  (define ε
   (lambda ()
@@ -50,18 +50,10 @@
  (define ✓ stream:singleton)
  (define ✗ (Λ (s) stream:empty))
 
-    (define ∨₂
+    (define ∧₂
      (lambda (g₁ g₂)
       (Λ (s)
-       (stream:§ (g₁ s) (g₂ s)))))
-
-    (define ∧₂
-      (lambda (g₁ g₂)
-       (Λ (s)
-        (stream:>>= (g₁ s) (stream:repeat g₂)))))
-
- ;(define ∧₂ (∧₀ (stream:>>= stream:§)))
- ;(define ∴₂ (∧₀ (stream:>>= stream:append)))
+       (stream:>>= (g₁ s) (stream:repeat g₂)))))
 
  (define-syntax ∧
   (syntax-rules ()
@@ -69,29 +61,12 @@
    ((∧ g) g)
    ((∧ g₀ g ...) (∧₂ g₀ (∧ g ...)))))
 
- (define-syntax ∴
-  (syntax-rules ()
-   ((∴) ✓)
-   ((∴ g) g)
-   ((∴ g₀ g ...) (∴₂ g₀ (∴ g ...)))))
-
- #;(define-syntax ∨
-  (syntax-rules ()
-   ((∨) ✗)
-   ((∨ g) g)
-   ((∨ g₀ g ...) (∨₂ g₀ (∨ g ...)))))
-
- #;(define ∨
-  (lambda goals
-   (Λ (s)
-    (apply stream:§ (map ($ s) goals)))))
-
- (define ∨
-  (lambda goals
-   (Λ (s)
-    (apply stream:§ (map
-                     (lambda (g) (g (status-copy s D: add1)))
-                     goals)))))
+    (define ∨
+     (lambda (m+)
+      (lambda goals
+       (Λ (s)
+        (let ((r (make-status (status-≡ s) ((○ add1 status-depth) s))))
+         (apply m+ (map ($ r) goals)))))))
 
     (define V/gensym
      (lambda ()
@@ -197,31 +172,58 @@
       ((run/with-symbols body ...)
        (map car (run/with-symbols ↓ body ...)))))
 
-    (define ifº
-     (lambda (goal otherwise)
-      (Λ (s)
-       (stream:§ (goal s) (otherwise s)))))
-
-    (define-syntax condº
-     (syntax-rules (else)
-
-      ((condº (g ...) ... (else otherwise ...))
-       (condº (g ...) ... (✓ otherwise ...)))
-
-      ;((condº ) ✗)
-
-      #;((condº (g₀ ...) (g ...) ...)
-       (ifº (∧ g₀ ...) (condº (g ...) ...)))
-
-      ((condº (g ...) ...) (∨ (∧ g ...) ...))
-
-     ))
-
  (define deepening
   (lambda (depth)
    (lambda (g)
     (Λ (s)
      ((stream:iterative-deepening 0 depth status-depth) (g s))))))
 
+  (define-datatype controlflow (E) (I) (A) (U))
 
+    (define ifº/¦
+     (lambda (question answer otherwise)
+      ((∨ stream:append) (∧ question answer) otherwise)))
+
+    (define ifº/§
+     (lambda (question answer otherwise)
+      ((∨ stream:§) (∧ question answer) otherwise)))
+
+    (define ifº/!
+     (lambda (question answer otherwise)
+      (Λ (s)
+       (let ((α (question s)))
+        (cond
+         ((stream:null? α) (otherwise s))
+         (else (stream:>>= α (stream:repeat answer))))))))
+
+    (define ifº/!!
+     (lambda (question answer otherwise)
+      (Λ (s)
+       (let ((α (question s)))
+        (stream:dest/car+cdr α
+         ((α₀ α₊) (answer α₀))
+         (else (otherwise s)))))))
+
+    (define-syntax condº
+     (syntax-rules ()
+      ((condº ifº (question answer ...))
+       (ifº question (∧ answer ...) ✗))
+      ((condº ifº (question answer ...) otherwise ...)
+       (ifº question (∧ answer ...) (condº ifº otherwise ...)))))
+
+    (define-syntax condº/¦
+     (syntax-rules ()
+      ((condº/∞ sexp ...) (condº ifº/¦ sexp ...))))
+
+    (define-syntax condº/§
+     (syntax-rules ()
+      ((condº/§ sexp ...) (condº ifº/§ sexp ...))))
+
+    (define-syntax condº/!
+     (syntax-rules ()
+      ((condº/! sexp ...) (condº ifº/! sexp ...))))
+
+    (define-syntax condº/!!
+     (syntax-rules ()
+      ((condº/!! sexp ...) (condº ifº/!! sexp ...))))
 )

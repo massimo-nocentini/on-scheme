@@ -32,42 +32,42 @@
 
  (define tea-cupº
   (lambda (v)
-   (condº
+   (condº/§
     ((≡ v 'tea))
     ((≡ v 'cup)))))
 
  (define split-peaº
   (lambda (v w)
-   (condº
+   (condº/§
     ((≡ v 'split) (≡ w 'pea))
     ((≡ v 'red) (≡ w 'bean)))))
 
  (define split-pea₁º
   (lambda (v w)
-   (condº
+   (condº/§
     ((tea-cupº v) (tea-cupº v))
     ((≡ v #f) (tea-cupº w)))))
 
     (define listº
      (lambda (l)
-      (condº
+      (condº/§
        ((nullº l))
        ((fresh (d)
          (∧ (cdrº l d) (listº d)))))))
 
     (define appendº
      (lambda (x y z)
-      (condº
+      (condº/§
        ((nullº x) (≡ z y))
-       (else (fresh (x₀ x₊ w)
-              (∧
-               (consº x₀ x₊ x)
-               (consº x₀ w z)
-               (appendº x₊ y w)))))))
+       ((fresh (x₀ x₊ w)
+         (∧
+          (consº x₀ x₊ x)
+          (consº x₀ w z)
+          (appendº x₊ y w)))))))
 
     (define dyckº
      (lambda (α)
-      (condº
+      (condº/§
        ((nullº α))
        ((fresh (β γ) (∧
                       (dyckº β)
@@ -77,26 +77,26 @@
     (define fibonacciº
      (lambda (depth n α)
       (cond
-       ((zero? depth)   (≡ α (list n)))
-       (else            (fresh (β γ)
-                         (∧
-                          (fibonacciº (sub1 depth) (sub1 n) β)
-                          (fibonacciº (sub1 depth) (sub2 n) γ)
-                          (appendº β γ α)))))))
+       ((zero? depth) (≡ α (list n)))
+       (else (fresh (β γ)
+              (∧
+               (fibonacciº (sub1 depth) (sub1 n) β)
+               (fibonacciº (sub1 depth) (sub2 n) γ)
+               (appendº β γ α)))))))
 
     (define tartagliaº
      (lambda (depth n k α)
       (cond
-       ((zero? depth)   (≡ α (list (list n k))))
-       (else            (fresh (β γ)
-                         (∧
-                          (tartagliaº (sub1 depth) (sub1 n) (sub1 k) β)
-                          (tartagliaº (sub1 depth) (sub1 n) k γ)
-                          (appendº β γ α)))))))
+       ((zero? depth) (≡ α (list (list n k))))
+       (else (fresh (β γ)
+              (∧
+               (tartagliaº (sub1 depth) (sub1 n) (sub1 k) β)
+               (tartagliaº (sub1 depth) (sub1 n) k γ)
+               (appendº β γ α)))))))
 
     (define stacksort_º
      (lambda (R O S I)
-      (condº
+      (condº/§
        ((nullº S) (nullº I) (≡ R O))
        ((fresh (a d s)
          (∧
@@ -107,7 +107,7 @@
 
     (define stacksort__º
      (lambda (P R O S I path)
-      (condº
+      (condº/§
        ((nullº S) (nullº I) (≡ R O) (≡ P path))
        ((fresh (a d s) (∧ (consº a d I) (consº a S s) (stacksortº P R O s d (cons #\) path)))))
        ((fresh (a d o) (∧ (consº a d S) (consº a O o) (stacksortº P R o d I (cons #\( path))))))))
@@ -115,7 +115,7 @@
     (define stacksortº
      (lambda (P R I)
       (letrec ((ssº (lambda (O S I path)
-                    (condº
+                    (condº/§
                      ((nullº S) (nullº I) (≡ R O) (≡ P path))
                      ((fresh (a d s) (∧
                                       (consº a d I)
@@ -129,7 +129,7 @@
 
     (define 2stacksort_º
      (lambda (R O S₂ S₁ I)
-      (condº
+      (condº/§
        ((nullº S₂) (nullº S₁) (nullº I) (≡ R O))
        ((fresh (a d s) (∧ (consº a d I) (consº a S₁ s)  (2stacksortº R O S₂ s d))))
        ((fresh (a d s) (∧ (consº a d S₁) (consº a S₂ s) (2stacksortº R O s d I))))
@@ -137,7 +137,7 @@
 
     (define 2stacksort__º
      (lambda (P R O S₂ S₁ I path)
-      (condº
+      (condº/§
        ((nullº S₂) (nullº S₁) (nullº I) (≡ R O) (≡ P path))
        ((fresh (a d s) (∧ (consº a d I) (consº a S₁ s)  (2stacksortº P R O S₂ s d (cons #\) path)))))
        ((fresh (a d s) (∧ (consº a d S₁) (consº a S₂ s) (2stacksortº P R O s d I (cons #\- path)))))
@@ -146,7 +146,7 @@
     (define 2stacksortº
      (lambda (P R I)
       (letrec ((2ssº (lambda (O S₂ S₁ I path)
-                      (condº
+                      (condº/§
                        ((nullº S₂) (nullº S₁) (nullº I) (≡ R O) (≡ P path))
                        ((fresh (a d s) (∧
                                         (consº a d I)
