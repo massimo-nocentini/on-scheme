@@ -65,6 +65,14 @@
           (consº x₀ w z)
           (appendº x₊ y w)))))))
 
+    (define alwaysº 
+     (condº/§ 
+      (✓) 
+      ((fresh () alwaysº))))
+
+    (define neverº 
+     (fresh () neverº))
+
     (define dyckº
      (lambda (α)
       (condº/§

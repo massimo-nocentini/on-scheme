@@ -178,8 +178,6 @@
     (Λ (s)
      ((stream:iterative-deepening 0 depth status-depth) (g s))))))
 
-  (define-datatype controlflow (E) (I) (A) (U))
-
     (define ifº/¦
      (lambda (question answer otherwise)
       ((∨ stream:append) (∧ question answer) otherwise)))
