@@ -126,10 +126,10 @@
      #;(test-error (run/with-symbols 2 (v) (g₁ v))) ; still it has no value
      (test '(onion onion onion onion onion) (run/with-symbols 5 (v) (g₂ v)))
 
-     #;(test-error (run/with-symbols 1 (v) neverº)) ; it has no value
+     ;(test-error (run/with-symbols 1 (v) neverº)) ; it has no value
      (test '() (run/with-symbols 1 (v) (∧ ✗ neverº)))
      (test '(▢₀) (run/with-symbols 1 (v) (condº/§ (✓) (neverº))))
-     #;(test-error (run/with-symbols 2 (v) (condº/§ (✓) (neverº))))
+     ;(test-error (run/with-symbols 2 (v) (condº/§ (✓) (neverº))))
      #;(test-error (run/with-symbols 1 (v) (condº/§ (neverº) (✓)))) ; it has no value
      #;(test-error (run/with-symbols 1 (v) (∧ (condº/§ (✓) (neverº)) ✗))) ; it has no value
 

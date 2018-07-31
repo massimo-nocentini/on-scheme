@@ -184,7 +184,9 @@
 
     (define ifº/§
      (lambda (question answer otherwise)
-      ((∨ stream:§) (∧ question answer) otherwise)))
+      (Λ (s) 
+       (let ((g ((∨ stream:§) (∧ question answer) otherwise)))
+        (g s)))))
 
     (define ifº/!
      (lambda (question answer otherwise)
