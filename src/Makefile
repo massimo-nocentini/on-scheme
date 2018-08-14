@@ -1,9 +1,12 @@
 
 
-current: commons streams unionfind microkanren reasoned-schemer deploy-shared-libs
+current: commons dice-of-doom deploy-shared-libs
+	cd ../tests/ && make dice-of-doom-test
+
+current1: commons streams unionfind microkanren reasoned-schemer deploy-shared-libs
 	cd ../tests/ && make microkanren-test
 
-current1: commons streams series deploy-shared-libs
+current2: commons streams series deploy-shared-libs
 	cd ../tests/ && make streams-test
 
 commons:
@@ -46,7 +49,11 @@ reasoned-schemer:
 	csc -dynamic reasoned-schemer.scm -J
 	csc -dynamic reasoned-schemer.import.scm -J
 
-all: clean commons promise continuations collatz seasoned-schemer unionfind streams series microkanren reasoned-schemer
+dice-of-doom:
+	csc -dynamic dice-of-doom.scm -J
+	csc -dynamic dice-of-doom.import.scm -J
+
+all: clean commons promise continuations collatz seasoned-schemer unionfind streams series microkanren reasoned-schemer dice-of-doom
 	# pass
 
 deploy-shared-libs:

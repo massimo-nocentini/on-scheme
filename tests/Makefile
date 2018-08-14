@@ -44,4 +44,9 @@ microkanren-test:
 	mv microkanren-test executables/
 	./executables/microkanren-test
 
-run-tests: promise-test collatz-test continuations-test learning-test ackermann-test seasoned-schemer-test unionfind-test streams-test microkanren-test
+dice-of-doom-test:
+	csc dice-of-doom-test.scm
+	mv dice-of-doom-test executables/
+	./executables/dice-of-doom-test
+
+run-tests: promise-test collatz-test continuations-test learning-test ackermann-test seasoned-schemer-test unionfind-test streams-test microkanren-test dice-of-doom-test

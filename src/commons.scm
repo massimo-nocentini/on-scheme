@@ -28,6 +28,8 @@
   (lambda (key ⊂)
    (lambda (s)
     (sort s (lambda (p q) (⊂ (key p) (key q)))))))
+ (define flist-ref (curry₁ list-ref))
+ (define fvector-ref (curry₁ vector-ref))
 
     (define $  ; Haskell-like suspended application
      (lambda args
@@ -35,7 +37,7 @@
        (let ((apps (map (lambda (f) (apply f args)) functions)))
         (apply values apps)))))
 
-    (define identity* 
+    (define identity*
      (lambda args
       (cond
        ((one? (length args)) (car args))
@@ -82,6 +84,10 @@
              (result (with-output-to-port str-port thunk)))
        (recv result (get-output-string str-port)))))
 
+    (define to-string
+     (lambda (v)
+      (with-output-to-string (lambda () (display v)))))
+
     (define member?
      (lambda args
       (cond
@@ -108,6 +114,15 @@
      (lambda (producer)
       (map/call-with-values producer identity*)))
 
+    (define map/tree
+     (lambda (f)
+      (letrec ((T (lambda (sexp)
+                   (cond
+                    ((null? sexp) '())
+                    ((pair? (car sexp)) (cons (T (car sexp)) (T (cdr sexp))))
+                    (else (cons (f (car sexp)) (T (cdr sexp))))))))
+       T)))
+
     (define collect-values
      (lambda (thunk)
       (call-with-values thunk identity*)))
@@ -121,12 +136,19 @@
 
     (define sub2 (○ sub1 sub1))
 
+    (define ≠
+     (lambda (v w)
+      (not (equal? v w))))
+
     (define one?
      (lambda (n)
-      (equal? n 1))) 
+      (equal? n 1)))
 
     (define ⁻¹
       (lambda (x) (/ 1 x)))
+
+    (define ²
+      (lambda (x) (* x x)))
 
     (define display-on-port
      (lambda (port)
@@ -148,7 +170,7 @@
      (lambda (key post)
       (lambda (l)
        (let* ((H (make-hash-table))
-              (U (lambda (l₀) 
+              (U (lambda (l₀)
                   (let ((k (key l₀)))
                    (cond
                     ((hash-table-exists? H k) (hash-table-set! H k (cons l₀ (hash-table-ref H k))))
@@ -160,7 +182,7 @@
      (lambda (pred?)
       (letrec ((P (lambda tuples
                    (cond
-                    ((apply pred? (map car tuples)) 
+                    ((apply pred? (map car tuples))
                      (let ((cdrs (map cdr tuples)))
                       (cond
                        ((every null? cdrs) #t)
@@ -168,5 +190,11 @@
                        (else #f))))
                     (else #f)))))
       P)))
+
+    (define K
+     (lambda keep
+      (lambda discard
+       (apply values keep))))
+
 
 )
