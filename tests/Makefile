@@ -45,7 +45,7 @@ microkanren-test:
 	./executables/microkanren-test
 
 dice-of-doom-test:
-	csc dice-of-doom-test.scm
+	csc -X numbers-syntax dice-of-doom-test.scm
 	mv dice-of-doom-test executables/
 	./executables/dice-of-doom-test
 

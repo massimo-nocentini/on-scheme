@@ -145,6 +145,8 @@
      (test #t ((tuple/pred? <) '(1 2) '(2 3) '(3 4)))
      (test #f ((tuple/pred? <) '(1 5) '(2 3) '(3 4)))
      (test #f ((tuple/pred? <) '(1 5) '(2) '(3 4)))
+     (test '(a b c d e) (remove-duplicates (reverse '(a b c d e))))
+     (test '(e c d a b) (remove-duplicates '(a b a a c d c e e)))
     )
 
 (test-exit)

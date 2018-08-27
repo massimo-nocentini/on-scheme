@@ -6,7 +6,7 @@
 
  (use srfi-1 srfi-69) ; `use` only for `srfi`s
 
- (use numbers data-structures ports test)
+ (use numbers data-structures ports test lolevel)
 
  (define-syntax λ ; "little-lambda", or "lambda the ultimate", the usual functional abstraction
   (syntax-rules ()
@@ -30,6 +30,7 @@
     (sort s (lambda (p q) (⊂ (key p) (key q)))))))
  (define flist-ref (curry₁ list-ref))
  (define fvector-ref (curry₁ vector-ref))
+ (define equals-to? (curry₁ equal?))
 
     (define $  ; Haskell-like suspended application
      (lambda args
@@ -196,5 +197,50 @@
       (lambda discard
        (apply values keep))))
 
+    (define remove-duplicates
+     (lambda (lst)
+      (letrec ((R (lambda (lst set)
+                   (cond
+                    ((null? lst) set)
+                    (else (let-values (((a d) (car+cdr lst)))
+                           (cond
+                            ((member a d) (R d set))
+                            (else (R d (cons a set))))))))))
+       (R lst '()))))
+
+    (define memoize
+     (lambda (f #!key (H (make-hash-table test: equal?)))
+      (let ((↑ (hash-table-ref/store H)))
+        (mutate-procedure! f (lambda (f)
+                              (lambda args
+                               (↑ args f)))))))
+
+    (define-syntax define-tabled
+     (syntax-rules (lambda)
+      ((define-tabled name (lambda (args ...) body ...))
+       (define name
+        (let ((H (make-hash-table)))
+         (letrec ((name (lambda (args ...)
+                        (let ((k `(,args ...)))
+                         (let-values (((found v) (hash-table-ref/maybe H k)))
+                          (unless found
+                           (set! v (begin body ...))
+                           (hash-table-set! H k v))
+                          v)))))
+         name))))))
+
+    (define hash-table-ref/store
+     (lambda (H)
+      (lambda (key missing)
+       (cond
+        ((hash-table-exists? H key) (hash-table-ref H key))
+        (else (let ((v (apply missing key)))
+               ((K v) (hash-table-set! H key v))))))))
+
+    (define hash-table-ref/maybe
+     (lambda (H key)
+      (cond
+       ((hash-table-exists? H key) (values #t (hash-table-ref H key)))
+       (else (values #f (gensym))))))
 
 )

@@ -72,7 +72,7 @@
                           first-move
                           (attacking-moves board player spare-dice))))
 
-    (define game-tree
+    (define-tabled game-tree
      (lambda (board players spare-dice first-move)
       (let* ((attack-moves (attacking-moves board players spare-dice))
              (moves (add-passing-move board players spare-dice first-move attack-moves)))
@@ -151,7 +151,7 @@
           when (and (>= p 0) (< p *board-hexnum*))
           collect p)))
 
-    (define neighbors
+    (define-tabled neighbors
      (lambda (pos board)
       (let* ((size (board-size board))
              (up (- pos size))
@@ -222,6 +222,13 @@
   (format t "current player = ~a" (player-letter (car tree)))
   (draw-board (cadr tree)))
 
+(define-record gametree player board moves)
+
+    (define-record-printer gametree
+     (lambda (tree out)
+      (format out "\nCurrent player: ~a\nBoard:~a"
+       (gametree-player tree) (gametree-board tree))))
+
 #;(defun handle-human (tree)
   (fresh-line)
   (princ "choose your move:")
@@ -249,12 +256,29 @@
                          (not (eq (cdr x) best)))
                        totals))))
 
+    (define winners
+     (lambda (board)
+      (let* ((tally (loop for hex across (board-cells board) collect (car hex)))
+             (C (lambda (player) (cons player (count (equals-to? player) tally))))
+             (totals (map C (remove-duplicates tally)))
+             (best (apply max (map cdr totals))))
+       (map car (remove (lambda (x) (≠ (cdr x) best)) totals)))))
+
 #;(defun announce-winner (board)
   (fresh-line)
   (let ((w (winners board)))
     (if (> (length w) 1)
       (format t "The game is a tie between ~a" (mapcar player-letter w))
       (format t "The winner is ~a" (player-letter (car w))))))
+
+    (define announce-winner
+     (lambda (board)
+      (newline)
+      (let ((w (winners board)))
+       ((K w)
+        (cond
+         ((> (length w) 1) (format #t "The game is a tie between ~a" w))
+         (else (format #t "The winner is ~a" (car w))))))))
 
 ;To play against a human:
 ;
@@ -274,20 +298,50 @@
           (/ 1 (length w))
         0)))))
 
+    (define rate-position
+     (lambda (tree player)
+      (let ((moves (caddr tree)))
+       (cond
+        ((pair? moves) (let ((opt (if (equal? (car tree) player) max min)))
+                        (apply opt (get-ratings tree player))))
+        (else (let ((w (winners (cadr tree))))
+               (cond
+                ((member player w) (⁻¹ (length w)))
+                (else 0))))))))
+
 #;(defun get-ratings (tree player)
   (mapcar (lambda (move)
           (rate-position (cadr move) player))
         (caddr tree)))
 
+    (define get-ratings
+     (lambda (tree player)
+      (map (lambda (move)
+            (rate-position (cadr move) player))
+       (caddr tree))))
+
 #;(defun handle-computer (tree)
   (let ((ratings (get-ratings tree (car tree))))
     (cadr (nth (position (apply max ratings) ratings) (caddr tree)))))
+
+    (define handle-computer
+     (lambda (tree)
+      (let* ((ratings (get-ratings tree (car tree)))
+             (n (list-index (equals-to? (apply max ratings)) ratings))) ; here we can add non-determinism when there is more than one maximum.
+       (cadr (list-ref (caddr tree) n)))))
 
 #;(defun play-vs-computer (tree)
   (print-info tree)
   (cond ((null (caddr tree)) (announce-winner (cadr tree)))
       ((zerop (car tree)) (play-vs-computer (handle-human tree)))
       (t (play-vs-computer (handle-computer tree)))))
+
+(define computer-vs-computer
+ (lambda (tree)
+  (display (make-gametree (car tree) (cadr tree) (caddr tree)))
+  (cond
+   ((null? (caddr tree)) (announce-winner (cadr tree)))
+   (else (computer-vs-computer (handle-computer tree))))))
 
 ;To play against the computer:
 ;
