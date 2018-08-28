@@ -219,7 +219,7 @@
      (syntax-rules (lambda)
       ((define-tabled name (lambda (args ...) body ...))
        (define name
-        (let ((H (make-hash-table)))
+        (let ((H (make-hash-table test: equal?)))
          (letrec ((name (lambda (args ...)
                         (let ((k `(,args ...)))
                          (let-values (((found v) (hash-table-ref/maybe H k)))
@@ -228,6 +228,14 @@
                            (hash-table-set! H k v))
                           v)))))
          name))))))
+
+    (define-syntax letrec-tabled
+     (syntax-rules (lambda)
+      ((letrec-tabled ((name (lambda (args ...) λ-body ...)) ...) body ...)
+       (let () ; to limit the scope of tabled definitions; 
+               ; on the contrary, `begin` doesn't limit their scope.
+        (define-tabled name (lambda (args ...) λ-body ...)) ... 
+        (begin body ...)))))
 
     (define hash-table-ref/store
      (lambda (H)
@@ -241,6 +249,6 @@
      (lambda (H key)
       (cond
        ((hash-table-exists? H key) (values #t (hash-table-ref H key)))
-       (else (values #f (gensym))))))
+       (else (values #f (##core#undefined))))))
 
 )

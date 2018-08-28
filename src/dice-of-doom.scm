@@ -197,7 +197,7 @@
                         (cons (car lst) (f (cdr lst) n))))))))
     (board-array (f (coerce board 'list) spare-dice))))
 
-    (define add-new-dice
+    (define add-new-dice₀ ; not a tail call definition.
      (lambda (board player spare-dice)
       (letrec ((F (lambda (lst n)
                    (cond
@@ -298,16 +298,21 @@
           (/ 1 (length w))
         0)))))
 
-    (define rate-position
-     (lambda (tree player)
-      (let ((moves (caddr tree)))
-       (cond
-        ((pair? moves) (let ((opt (if (equal? (car tree) player) max min)))
-                        (apply opt (get-ratings tree player))))
-        (else (let ((w (winners (cadr tree))))
-               (cond
-                ((member player w) (⁻¹ (length w)))
-                (else 0))))))))
+    (define-tabled rate-position
+     (lambda (player)
+      (letrec-tabled ((R (lambda (tree)
+                          (let ((moves (caddr tree)))
+                           (cond
+                            ((pair? moves) (let* ((other (car tree))
+                                                  (opt (cond
+                                                        ((equal? other player) max)
+                                                        (else min))))
+                                            (apply opt (get-ratings tree player))))
+                            (else (let ((w (winners (cadr tree))))
+                                   (cond
+                                    ((member player w) (⁻¹ (length w)))
+                                    (else 0)))))))))
+      R)))
 
 #;(defun get-ratings (tree player)
   (mapcar (lambda (move)
@@ -317,7 +322,7 @@
     (define get-ratings
      (lambda (tree player)
       (map (lambda (move)
-            (rate-position (cadr move) player))
+            ((rate-position player) (cadr move)))
        (caddr tree))))
 
 #;(defun handle-computer (tree)
@@ -387,5 +392,19 @@
                                (cons (list cur-player (1+ cur-dice)) acc))
                           (f (cdr lst) n (cons (car lst) acc))))))))
     (board-array (f (coerce board 'list) spare-dice ()))))
+
+    (define add-new-dice
+     (lambda (board player spare-dice)
+      (letrec ((F (lambda (lst n acc)
+                   (cond
+                    ((null? lst) (reverse acc))
+                    ((zero? n) (append (reverse acc) lst))
+                    (else (let ((cur-player (caar lst))
+                                (cur-dice (cadar lst)))
+                           (cond
+                            ((equal? cur-player player) (F (cdr lst) (sub1 n) (cons (list cur-player (add1 cur-dice)) acc)))
+                            (else (F (cdr lst) n (cons (car lst) acc))))))))))
+       (let ((cells (F ((○ vector->list board-cells) board) spare-dice '())))
+        (make-board (list->vector cells) (board-size board))))))
 
 )

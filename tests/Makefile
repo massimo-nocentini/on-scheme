@@ -15,7 +15,7 @@ continuations-test:
 	./executables/continuations-test
 
 learning-test:
-	csc learning-test.scm
+	csc -X numbers-syntax learning-test.scm
 	mv learning-test executables/
 	./executables/learning-test
 
@@ -45,7 +45,7 @@ microkanren-test:
 	./executables/microkanren-test
 
 dice-of-doom-test:
-	csc -X numbers-syntax dice-of-doom-test.scm
+	csc dice-of-doom-test.scm
 	mv dice-of-doom-test executables/
 	./executables/dice-of-doom-test
 
