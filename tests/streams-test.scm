@@ -18,6 +18,7 @@
      (test '(3 4 5 6 7) ((list○take 5) (series:from 3)))
      (test '(1 1 1 1 1 1 1 1 1 1) ((list○take 10) stream:1s))
      (test '(0 1 2 3 4 5 6 7 8 9) ((list○take 10) numbers/nats))
+     (test '(0 1 2 3 4 5 6 7 8 9) ((list○take 10) ((stream:append-map list) numbers/nats)))
      (test  117 ((stream:ref 100) ((not-multiples-of 7) numbers/nats)))
      (test '(0 1 3 6 10 15 21 28 36 45 55 66 78 91 105 120 136 153 171 190) ((list○take 20) numbers/triangular))
      (test '(0 1 3 6 10 15 21 28 36 45 55 66 78 91 105 120 136 153 171 190) ((list○take 20) numbers/triangular/∞))

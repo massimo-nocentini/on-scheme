@@ -101,17 +101,23 @@
 
     (define stream:map
      (lambda (func #!key (* #f))    ; `*` in the sense of *starred* defs in 'The Little Schemer',
-      ; namely to perform __tree recursion__ over streams.
+                                    ; namely to perform __tree recursion__ over streams.
       (letrec ((M (Λ (s)
                    (stream:dest/car+cdr (s ∅)
                     ((scar scdr) (cond
                                   ((and * (promise? scar)) (stream:cons (M scar) (M scdr)))
                                   ;(else (stream:cons (collect-values (λ () (func scar))) (M scdr)))))))))
-                                  (else (stream:cons 
+                                  (else (stream:cons
                                          (collect-values (λ () (func scar)))
                                          (M scdr)))))))))
        M)))
 
+    (define stream:append-map
+     (lambda (f)
+      (letrec ((M (Λ (s)
+                   (stream:dest/car+cdr (s ∅)
+                    ((scar scdr) (stream:append (f scar) (M scdr)))))))
+       M)))
 
     (define stream:filter
      (lambda (pred?)

@@ -263,6 +263,16 @@
             (1767263190 1767263190 1289624490 811985790 463991880 245642760 121580760 56448210 24582285 10015005 3798795 1332045 427570 123970 31878 7084 1309 189 19 1))
      ((Riordan-array catalan) 20))
 
+    (define-tabled ackermann
+     (lambda (m n)
+      (cond
+       ((zero? m) (add1 n))
+       ((zero? n) (ackermann (sub1 m) 1))
+       (else (ackermann (sub1 m) (ackermann m (sub1 n)))))))
+
+    (test 7 (ackermann 2 2))
+    (test 125 (ackermann 3 4))
+
     )
 
 (test-exit)
