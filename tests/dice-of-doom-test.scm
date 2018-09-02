@@ -4,7 +4,7 @@
 (use srfi-1 srfi-13)
 (use test numbers)
 
-(use commons dice-of-doom)
+(use commons streams dice-of-doom)
 
 (randomize 1024)
 
@@ -16,10 +16,10 @@
   #((B 2) (B 2) (B 4) (B 1))
   (board-cells (gen-board 2 '(A B) 4))) ; 'A and 'B play on 2x2 board starting with at most 4 dices on each cell.
 
- (test '(2 1 3) (neighbors 0 (gen-board 2 '(A B) 4)))
- (test '(3 0)   (neighbors 1 (gen-board 2 '(A B) 4)))
- (test '(0 3)   (neighbors 2 (gen-board 2 '(A B) 4)))
- (test '(1 0 2) (neighbors 3 (gen-board 2 '(A B) 4)))
+ (test '(2 1 3) (stream:->list (neighbors 0 (gen-board 2 '(A B) 4))))
+ (test '(3 0)   (stream:->list (neighbors 1 (gen-board 2 '(A B) 4))))
+ (test '(0 3)   (stream:->list (neighbors 2 (gen-board 2 '(A B) 4))))
+ (test '(1 0 2) (stream:->list (neighbors 3 (gen-board 2 '(A B) 4))))
 
  (test #((A 3) (A 1) (B 3) (A 2))
   (board-cells

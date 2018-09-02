@@ -1,6 +1,6 @@
 
 
-current: commons dice-of-doom deploy-shared-libs
+current: commons streams series dice-of-doom deploy-shared-libs
 	cd ../tests/ && make dice-of-doom-test
 
 current1: commons streams unionfind microkanren reasoned-schemer deploy-shared-libs

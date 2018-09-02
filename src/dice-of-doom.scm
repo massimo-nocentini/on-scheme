@@ -5,14 +5,14 @@
 
  (use srfi-1)
  (use numbers extras loop)
- (use commons)
+ (use commons streams series)
 
 #;(defparameter *num-players* 2)
 #;(defparameter *max-dice* 3)
 #;(defparameter *board-size* 2)
 #;(defparameter *board-hexnum* (* *board-size* *board-size*))
 #;(defun player-letter (n)
-  (code-char (+ 97 n)))
+    (code-char (+ 97 n)))
 
  (define-record board cells size)
  (define-record game board players)
@@ -24,12 +24,12 @@
  (define board-hexnum (○ ² board-size))
 
 #;(defun board-array (lst)
-  (make-array *board-hexnum* :initial-contents lst))
+        (make-array *board-hexnum* :initial-contents lst))
 
 #;(defun gen-board ()
-  (board-array (loop for n below *board-hexnum*
-                     collect (list (random *num-players*)
-                                   (1+ (random *max-dice*))))))
+        (board-array (loop for n below *board-hexnum*
+                      collect (list (random *num-players*)
+                          (1+ (random *max-dice*))))))
 
  (define gen-board
   (lambda (size players dices)
@@ -42,14 +42,14 @@
     (make-board (list->vector (list-tabulate (² size) R)) size))))
 
 #;(defun draw-board (board)
-  (loop for y below *board-size*
-        do (progn (fresh-line)
-                  (loop repeat (- *board-size* y)
-                        do (princ "  "))
-                  (loop for x below *board-size*
-                        for hex = (aref board (+ x (* *board-size* y)))
-                        do (format t "~a-~a " (player-letter (first hex))
-                                              (second hex))))))
+        (loop for y below *board-size*
+         do (progn (fresh-line)
+             (loop repeat (- *board-size* y)
+              do (princ "  "))
+             (loop for x below *board-size*
+              for hex = (aref board (+ x (* *board-size* y)))
+              do (format t "~a-~a " (player-letter (first hex))
+                  (second hex))))))
 
     (define-record-printer board
      (lambda (b out)
@@ -64,13 +64,13 @@
              do (format out "~a-~a " (first hex) (second hex))))))))
 
 #;(defun game-tree (board player spare-dice first-move)
-  (list player
-        board
-        (add-passing-move board
-                          player
-                          spare-dice
-                          first-move
-                          (attacking-moves board player spare-dice))))
+        (list player
+         board
+         (add-passing-move board
+          player
+          spare-dice
+          first-move
+          (attacking-moves board player spare-dice))))
 
     (define-tabled game-tree
      (lambda (board players spare-dice first-move)
@@ -79,45 +79,53 @@
        (list (car players) board moves))))
 
 #;(defun add-passing-move (board player spare-dice first-move moves)
-  (if first-move
-      moves
-      (cons (list nil
-                  (game-tree (add-new-dice board player (1- spare-dice))
-                             (mod (1+ player) *num-players*)
-                             0
-                             t))
-            moves)))
+        (if first-move
+         moves
+         (lazy-cons (list nil
+                     (game-tree (add-new-dice board player
+                                 (1- spare-dice))
+                      (mod (1+ player) *num-players*)
+                      0
+                      t))
+          moves)))
 
     (define add-passing-move
-     (lambda (board players spare-dice first-move moves)
+     (Λ (board players spare-dice first-move moves)
       (cond
        (first-move moves)
        (else (let* ((new-board (add-new-dice board (car players) (sub1 spare-dice)))
                     (tree (game-tree new-board (cdr players) 0 #t)))
-              (cons (list 'pass tree) moves))))))
+              (stream:cons (list 'pass tree) moves))))))
 
 #;(defun attacking-moves (board cur-player spare-dice)
-  (labels ((player (pos)
-             (car (aref board pos)))
-           (dice (pos)
-             (cadr (aref board pos))))
-    (mapcan (lambda (src)
-              (when (eq (player src) cur-player)
-                (mapcan (lambda (dst)
-                          (when (and (not (eq (player dst) cur-player))
-                                (> (dice src) (dice dst)))
-                          (list
-     (list (list src dst)
-           (game-tree (board-attack board cur-player src dst (dice src))
-                      cur-player
-                      (+ spare-dice (dice dst))
-                      nil)))))
-                        (neighbors src))))
-            (loop for n below *board-hexnum*
-                  collect n))))
+        (labels ((player (pos) (car (aref board pos)))
+                 (dice (pos) (cadr (aref board pos))))
+         (lazy-mapcan
+          (lambda (src)
+           (if (eq (player src) cur-player)
+            (lazy-mapcan
+             (lambda (dst)
+              (if (and (not (eq (player dst)
+                             cur-player))
+                   (> (dice src) (dice dst)))
+               (make-lazy
+                (list (list (list src dst)
+                       (game-tree (board-attack board
+                                   cur-player
+                                   src
+                                   dst
+                                   (dice src))
+                        cur-player
+                        (+ spare-dice (dice dst))
+                        nil))))
+               (lazy-nil)))
+             (make-lazy (neighbors src)))
+            (lazy-nil)))
+    (make-lazy (loop for n below *board-hexnum*
+                collect n)))))
 
     (define attacking-moves
-     (lambda (board players spare-dice)
+     (Λ (board players spare-dice)
       (let ((S (lambda (src)
                 (let ((player (car players)))
                  (cond
@@ -129,25 +137,25 @@
                                ((and
                                  (≠ ((board-player@cell board) dst) player)
                                  (> dices@src-cell dices@dst-cell))
-                                (list
-                                 (list
-                                  `(cell ,src attacks ,dst) ; description
-                                  (game-tree
-                                   (board-attack board player src dst dices@src-cell)
-                                   players (+ spare-dice dices@dst-cell) #f))))
-                               (else '()))))))
-                    (append-map D (neighbors src board))))
-                  (else '()))))))
-       (append-map S (iota (board-hexnum board))))))
+                                 (stream:singleton ; replaces: (stream:->list (list ...))
+                                  (list
+                                   `(cell ,src attacks ,dst) ; description
+                                   (game-tree
+                                    (board-attack board player src dst dices@src-cell)
+                                    players (+ spare-dice dices@dst-cell) #f))))
+                               (else stream:empty))))))
+                    ((stream:append-map D) (neighbors src board))))
+                  (else stream:empty))))))
+       ((stream:append-map S) (series:range 0 (board-hexnum board))))))
 
 #;(defun neighbors (pos)
-  (let ((up (- pos *board-size*))
-        (down (+ pos *board-size*)))
-    (loop for p in (append (list up down)
-                           (unless (zerop (mod pos *board-size*))
-                             (list (1- up) (1- pos)))
-                           (unless (zerop (mod (1+ pos) *board-size*))
-                             (list (1+ pos) (1+ down))))
+        (let ((up (- pos *board-size*))
+              (down (+ pos *board-size*)))
+         (loop for p in (append (list up down)
+                         (unless (zerop (mod pos *board-size*))
+                          (list (1- up) (1- pos)))
+                         (unless (zerop (mod (1+ pos) *board-size*))
+                          (list (1+ pos) (1+ down))))
           when (and (>= p 0) (< p *board-hexnum*))
           collect p)))
 
@@ -164,16 +172,17 @@
                   ((not (divisible-by-size? (add1 pos))) (list (add1 pos) (add1 down)))
                   (else '())))
              (l (append (list up down) l₁ l₂)))
-       (loop for p in l
-        when (and (>= p 0) (< p (board-hexnum board)))
-        collect p))))
+       (list->stream
+        (loop for p in l
+         when (and (>= p 0) (< p (board-hexnum board)))
+         collect p)))))
 
 #;(defun board-attack (board player src dst dice)
-  (board-array (loop for pos from 0
-                     for hex across board
-                     collect (cond ((eq pos src) (list player 1))
-                                   ((eq pos dst) (list player (1- dice)))
-                                   (t hex)))))
+        (board-array (loop for pos from 0
+                      for hex across board
+                      collect (cond ((eq pos src) (list player 1))
+                          ((eq pos dst) (list player (1- dice)))
+                          (t hex)))))
 
     (define board-attack
      (lambda (board player src dst dice)
@@ -186,16 +195,16 @@
        (make-board (list->vector cells) (board-size board)))))
 
 #;(defun add-new-dice (board player spare-dice)
-  (labels ((f (lst n)
-             (cond ((null lst) nil)
+        (labels ((f (lst n)
+                  (cond ((null lst) nil)
                    ((zerop n) lst)
-               (t (let ((cur-player (caar lst))
-                        (cur-dice (cadar lst)))
-                    (if (and (eq cur-player player) (< cur-dice *max-dice*))
+                   (t (let ((cur-player (caar lst))
+                            (cur-dice (cadar lst)))
+                       (if (and (eq cur-player player) (< cur-dice *max-dice*))
                         (cons (list cur-player (1+ cur-dice))
-                              (f (cdr lst) (1- n)))
+                         (f (cdr lst) (1- n)))
                         (cons (car lst) (f (cdr lst) n))))))))
-    (board-array (f (coerce board 'list) spare-dice))))
+         (board-array (f (coerce board 'list) spare-dice))))
 
     (define add-new-dice₀ ; not a tail call definition.
      (lambda (board player spare-dice)
@@ -212,15 +221,15 @@
         (make-board (list->vector cells) (board-size board))))))
 
 #;(defun play-vs-human (tree)
-  (print-info tree)
-  (if (caddr tree)
-      (play-vs-human (handle-human tree))
-    (announce-winner (cadr tree))))
+        (print-info tree)
+        (if (not (lazy-null (caddr tree)))
+         (play-vs-human (handle-human tree))
+         (announce-winner (cadr tree))))
 
 #;(defun print-info (tree)
-  (fresh-line)
-  (format t "current player = ~a" (player-letter (car tree)))
-  (draw-board (cadr tree)))
+        (fresh-line)
+        (format t "current player = ~a" (player-letter (car tree)))
+        (draw-board (cadr tree)))
 
 (define-record gametree player board moves)
 
@@ -230,31 +239,34 @@
        (gametree-player tree) (gametree-board tree))))
 
 #;(defun handle-human (tree)
-  (fresh-line)
-  (princ "choose your move:")
-  (let ((moves (caddr tree)))
-    (loop for move in moves
-          for n from 1
-          do (let ((action (car move)))
-               (fresh-line)
-               (format t "~a. " n)
-               (if action
-                   (format t "~a -> ~a" (car action) (cadr action))
-                   (princ "end turn"))))
-    (fresh-line)
-    (cadr (nth (1- (read)) moves))))
+        (fresh-line)
+        (princ "choose your move:")
+        (let ((moves (caddr tree)))
+         (labels ((print-moves (moves n)
+                   (unless (lazy-null moves)
+                    (let* ((move (lazy-car moves))
+                           (action (car move)))
+                     (fresh-line)
+                     (format t "~a. " n)
+                     (if action
+                      (format t "~a -> ~a" (car action) (cadr action))
+                      (princ "end turn")))
+                    (print-moves (lazy-cdr moves) (1+ n)))))
+          (print-moves moves 1))
+         (fresh-line)
+         (cadr (lazy-nth (1- (read)) moves))))
 
 #;(defun winners (board)
-  (let* ((tally (loop for hex across board
-                      collect (car hex)))
-         (totals (mapcar (lambda (player)
-                           (cons player (count player tally)))
-                         (remove-duplicates tally)))
-         (best (apply max (mapcar cdr totals))))
-    (mapcar car
-            (remove-if (lambda (x)
-                         (not (eq (cdr x) best)))
-                       totals))))
+        (let* ((tally (loop for hex across board
+                       collect (car hex)))
+               (totals (mapcar (lambda (player)
+                                (cons player (count player tally)))
+                        (remove-duplicates tally)))
+               (best (apply max (mapcar cdr totals))))
+         (mapcar car
+          (remove-if (lambda (x)
+                      (not (eq (cdr x) best)))
+           totals))))
 
     (define winners
      (lambda (board)
@@ -265,11 +277,11 @@
        (map car (remove (lambda (x) (≠ (cdr x) best)) totals)))))
 
 #;(defun announce-winner (board)
-  (fresh-line)
-  (let ((w (winners board)))
-    (if (> (length w) 1)
-      (format t "The game is a tie between ~a" (mapcar player-letter w))
-      (format t "The winner is ~a" (player-letter (car w))))))
+        (fresh-line)
+        (let ((w (winners board)))
+         (if (> (length w) 1)
+          (format t "The game is a tie between ~a" (mapcar player-letter w))
+          (format t "The winner is ~a" (player-letter (car w))))))
 
     (define announce-winner
      (lambda (board)
@@ -287,27 +299,25 @@
 ;The code below adds the AI player
 
 #;(defun rate-position (tree player)
-  (let ((moves (caddr tree)))
-    (if moves
-      (apply (if (eq (car tree) player)
-               max
-             min)
-             (get-ratings tree player))
-      (let ((w (winners (cadr tree))))
-      (if (member player w)
-          (/ 1 (length w))
-        0)))))
+        (let ((moves (caddr tree)))
+         (if moves
+          (apply (if (eq (car tree) player)
+                  max
+                  min)
+           (get-ratings tree player))
+          (let ((w (winners (cadr tree))))
+           (if (member player w)
+            (/ 1 (length w))
+            0)))))
 
     (define-tabled rate-position
      (lambda (player)
       (letrec-tabled ((R (lambda (tree)
                           (let ((moves (caddr tree)))
                            (cond
-                            ((pair? moves) (let* ((other (car tree))
-                                                  (opt (cond
-                                                        ((equal? other player) max)
-                                                        (else min))))
-                                            (apply opt (get-ratings tree player))))
+                            (((○ not stream:null?) moves) (let* ((other (car tree))
+                                                                 (opt (if (equal? other player) max min)))
+                                                           (apply opt (get-ratings tree player))))
                             (else (let ((w (winners (cadr tree))))
                                    (cond
                                     ((member player w) (⁻¹ (length w)))
@@ -315,37 +325,38 @@
       R)))
 
 #;(defun get-ratings (tree player)
-  (mapcar (lambda (move)
-          (rate-position (cadr move) player))
-        (caddr tree)))
+        (mapcar (lambda (move)
+                 (rate-position (cadr move) player))
+         (caddr tree)))
 
     (define get-ratings
      (lambda (tree player)
-      (map (lambda (move)
-            ((rate-position player) (cadr move)))
-       (caddr tree))))
+      (map (○ (rate-position player) cadr)
+       ((○ stream:->list caddr) tree))))
 
 #;(defun handle-computer (tree)
-  (let ((ratings (get-ratings tree (car tree))))
-    (cadr (nth (position (apply max ratings) ratings) (caddr tree)))))
+        (let ((ratings (get-ratings tree (car tree))))
+         (cadr (nth (position (apply max ratings) ratings) (caddr tree)))))
 
     (define handle-computer
      (lambda (tree)
       (let* ((ratings (get-ratings tree (car tree)))
-             (n (list-index (equals-to? (apply max ratings)) ratings))) ; here we can add non-determinism when there is more than one maximum.
-       (cadr (list-ref (caddr tree) n)))))
+             (maximum (apply max ratings))
+             (n (list-index (equals-to? maximum) ratings)) ; here we can add non-determinism when there is more than one maximum.
+             (moves (caddr tree)))
+       (cadr ((stream:ref n) moves)))))
 
 #;(defun play-vs-computer (tree)
-  (print-info tree)
-  (cond ((null (caddr tree)) (announce-winner (cadr tree)))
-      ((zerop (car tree)) (play-vs-computer (handle-human tree)))
-      (t (play-vs-computer (handle-computer tree)))))
+        (print-info tree)
+        (cond ((null (caddr tree)) (announce-winner (cadr tree)))
+         ((zerop (car tree)) (play-vs-computer (handle-human tree)))
+         (t (play-vs-computer (handle-computer tree)))))
 
 (define computer-vs-computer
  (lambda (tree)
   (display (make-gametree (car tree) (cadr tree) (caddr tree)))
   (cond
-   ((null? (caddr tree)) (announce-winner (cadr tree)))
+   ((stream:null? (caddr tree)) (announce-winner (cadr tree)))
    (else (computer-vs-computer (handle-computer tree))))))
 
 ;To play against the computer:
@@ -406,5 +417,34 @@
                             (else (F (cdr lst) n (cons (car lst) acc))))))))))
        (let ((cells (F ((○ vector->list board-cells) board) spare-dice '())))
         (make-board (list->vector cells) (board-size board))))))
+
+;Now we start writing improvements for the AI...
+
+#;(defun limit-tree-depth (tree depth)
+        (list (car tree) 
+         (cadr tree) 
+         (if (zerop depth)
+          (lazy-nil)
+          (lazy-mapcar (lambda (move)
+                        (list (car move) 
+                         (limit-tree-depth (cadr move) (1- depth))))
+           (caddr tree)))))
+
+    (define limit-tree-depth 
+     (lambda (depth)
+      (lambda (tree)
+       (letrec ((L (lambda (tree depth) 
+                    (list 
+                     (car tree) 
+                     (cadr tree) 
+                     (cond 
+                      ((zero? depth) stream:empty)
+                      (else (let ((L₀ (lambda (move) 
+                                       (list 
+                                        (car move) 
+                                        (L (cadr move) (sub1 depth))))))
+                             (stream:map L₀ (caddr tree)))))))))
+        (L tree depth)))))
+
 
 )
