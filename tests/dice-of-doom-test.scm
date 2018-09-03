@@ -44,20 +44,20 @@
 
     (test '(A) (winners (make-board #((A 1) (B 1) (A 1) (A 1)) 2)))
 
-    #;(test '()
-     (with-output-to-string
-      (lambda ()
-       (let ((board (gen-board 3 '(A B) 3))
-             (players (apply circular-list '(A B))))
-        (computer-vs-computer (game-tree board players 0 #t))))))
-)
+    (test "\n          B-3 A-2 A-3 B-3 A-4 \n        B-4 A-3 A-4 B-2 B-3 \n      B-2 A-3 B-3 B-2 B-3 \n    B-4 A-4 B-3 A-3 A-1 \n  A-1 B-3 A-3 B-1 A-4 "
+     (with-output-to-string (τ (display (gen-board 5 '(A B) 4)))))
 
-(display (gen-board 5 '(A B) 4))
+    (test "\n        \n      \n    \n  \nCurrent player: A\nBoard:A-1 A-3 B-3 A-1 A-1 B-2 B-3 B-1 B-1 A-1 A-2 B-3 A-2 A-2 A-1 B-2 \n        \n      \n    \n  \nCurrent player: A\nBoard:A-1 A-1 B-3 A-1 A-1 A-2 B-3 B-1 B-1 A-1 A-2 B-3 A-2 A-2 A-1 B-2 \n        \n      \n    \n  \nCurrent player: A\nBoard:A-1 A-1 B-3 A-1 A-1 A-2 B-3 B-1 A-1 A-1 A-2 B-3 A-1 A-2 A-1 B-2 \n        \n      \n    \n  \nCurrent player: B\nBoard:A-2 A-2 B-3 A-1 A-1 A-2 B-3 B-1 A-1 A-1 A-2 B-3 A-1 A-2 A-1 B-2 \n        \n      \n    \n  \nCurrent player: B\nBoard:A-2 B-2 B-1 A-1 A-1 A-2 B-3 B-1 A-1 A-1 A-2 B-3 A-1 A-2 A-1 B-2 \nThe winner is A"
+     (with-output-to-string
+      (τ (let ((board (gen-board 4 '(A B) 3))
+               (players (apply circular-list '(A B))))
+          ((computer-vs-computer 4) (game-tree board players 0 #t))))))
+)
 
 (newline)
     (let ((board (gen-board 5 '(A B) 3))
           (players (apply circular-list '(A B))))
-     (computer-vs-computer (game-tree board players 0 #t)))
+     ((computer-vs-computer 4) (game-tree board players 0 #t)))
 (newline)
 
 ;------------------------------------------------------------------------

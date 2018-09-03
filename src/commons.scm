@@ -13,6 +13,10 @@
    ((λ args body ...)
     (lambda args body ...))))
 
+ (define-syntax τ
+  (syntax-rules ()
+   ((τ body ...) (λ () (begin body ...)))))
+
  (define ○ compose)
 
  (define curry₁

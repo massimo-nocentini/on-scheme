@@ -331,11 +331,11 @@
            (get-ratings tree player))
           (score-board (cadr tree) player))))
 
-    (define rate-position 
+    (define rate-position
      (lambda (player)
       (lambda (tree)
        (let ((moves (caddr tree)))
-        (cond 
+        (cond
          ((not (stream:null? moves)) (let ((opt (if (equal? (car tree) player) max min)))
                                       (apply opt (get-ratings tree player))))
          (else (score-board (cadr tree) player)))))))
@@ -355,7 +355,7 @@
 
 #;(defun handle-computer (tree)
         (let ((ratings (ab-get-ratings-max (limit-tree-depth tree *ai-level*)
-                        (car tree) 
+                        (car tree)
                         most-positive-fixnum
                         most-negative-fixnum)))
          (cadr (lazy-nth (position (apply max ratings) ratings) (caddr tree)))))
@@ -375,15 +375,15 @@
          ((zerop (car tree)) (play-vs-computer (handle-human tree)))
          (t (play-vs-computer (handle-computer tree)))))
 
-(define AI-level 5)
-
-(define computer-vs-computer
- (lambda (tree)
-  (display (make-gametree (car tree) (cadr tree) (caddr tree)))
-  (cond
-   ((stream:null? (caddr tree)) (announce-winner (cadr tree)))
-   (else (computer-vs-computer
-          (handle-computer tree handler: (limit-tree-depth AI-level)))))))
+    (define computer-vs-computer
+     (lambda (AI-level)
+      (let ((pruning (limit-tree-depth AI-level)))
+       (letrec ((P (lambda (tree)
+                    (display (make-gametree (car tree) (cadr tree) (caddr tree)))
+                    (cond
+                     ((stream:null? (caddr tree)) (announce-winner (cadr tree)))
+                     (else (P (handle-computer tree handler: pruning)))))))
+        P))))
 
 ;To play against the computer:
 ;
@@ -525,13 +525,13 @@
                      (cons x (f (lazy-cdr moves) (max x lower-limit))))))))
          (f (caddr tree) lower-limit)))
 
-    (define get-ratings/αβ-max 
+    (define get-ratings/αβ-max
      (lambda (tree player upper-limit lower-limit)
       (letrec ((F (lambda (moves lower-limit)
-                   (cond 
+                   (cond
                     ((stream:null? moves) '())
                     (else (let ((x (rate-position/αβ (cadr (stream:car moves)) player upper-limit lower-limit)))
-                           (cond 
+                           (cond
                             ((>= x upper-limit) (list x))
                             (else (cons x (F (stream:cdr moves) (max x lower-limit)))))))))))
        (F (caddr tree) lower-limit))))
@@ -548,13 +548,13 @@
                      (cons x (f (lazy-cdr moves) (min x upper-limit))))))))
          (f (caddr tree) upper-limit)))
 
-    (define get-ratings/αβ-min 
+    (define get-ratings/αβ-min
      (lambda (tree player upper-limit lower-limit)
       (letrec ((F (lambda (moves upper-limit)
-                   (cond 
+                   (cond
                     ((stream:null? moves) '())
                     (else (let ((x (rate-position/αβ (cadr (stream:car moves)) player upper-limit lower-limit)))
-                           (cond 
+                           (cond
                             ((<= x lower-limit) (list x))
                             (else (cons x (F (stream:cdr moves) (min x upper-limit)))))))))))
        (F (caddr tree) upper-limit))))
@@ -573,7 +573,7 @@
                        lower-limit)))
           (score-board (cadr tree) player))))
 
-    (define rate-position/αβ 
+    (define rate-position/αβ
      (lambda (tree player upper-limit lower-limit)
       (let ((moves (caddr tree)))
        (if (not (stream:null? moves))
