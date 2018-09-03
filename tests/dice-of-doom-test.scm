@@ -55,7 +55,7 @@
 (display (gen-board 5 '(A B) 4))
 
 (newline)
-    (let ((board (gen-board 3 '(A B) 3))
+    (let ((board (gen-board 5 '(A B) 3))
           (players (apply circular-list '(A B))))
      (computer-vs-computer (game-tree board players 0 #t)))
 (newline)

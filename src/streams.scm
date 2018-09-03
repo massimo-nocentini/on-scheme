@@ -97,7 +97,7 @@
                    (stream:dest/car+cdr s
                     ((scar scdr) (func scar (F scdr)))
                     (else (init))))))
-       (○ stream:car F))))
+       (○ force F))))
 
     (define stream:map
      (lambda (func #!key (* #f))    ; `*` in the sense of *starred* defs in 'The Little Schemer',

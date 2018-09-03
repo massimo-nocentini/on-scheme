@@ -48,15 +48,15 @@
      (test '((0 0 0) (1 1 1) (2 1 3) (3 2 6) (4 3 10) (5 5 15) (6 8 21) (7 13 28) (8 21 36) (9 34 45))
       ((list○take 10) (stream:zip numbers/nats numbers/fibonacci numbers/triangular)))
 
-    (test #f ((stream:foldr
-               (lambda (a acc) (and a (stream:car acc)))
-               (lambda () (list (/ 1 0))))
-              (:⁺ #t #t #t #f #t))) ; #f prevents (/ 1 0) from being evaluated
+    (test 'hello ((stream:foldr
+                   (lambda (a rest) (and a (force rest)))
+                   (lambda () 'hello))
+                  (:⁺ #t #t #t stream:empty))) ; #f prevents enumerating zeros forever
 
     (test #f ((stream:foldr
-               (lambda (a acc) (and a (stream:car acc)))
-               (lambda () 'useless))
-              (:⁺ #t #t #t #f series:0))) ; #f prevents enumerating zeros forever
+               (lambda (a rest) (and a (force rest)))
+               (lambda () (list (/ 1 0))))
+              (:⁺ #t #t #t #f #t stream:0s))) ; #f prevents (/ 1 0) from being evaluated
 
     (test '(0 1 2 0 1 2 0 1 2 0) ((list○take 10) (stream:§ 
                                                   (stream:repeat 0) 
