@@ -5,7 +5,7 @@
  (import chicken scheme)
 
  (use srfi-1 srfi-69) ; `use` only for `srfi`s
-
+ (use datatype matchable)
  (use numbers data-structures ports test lolevel)
 
  (define-syntax λ ; "little-lambda", or "lambda the ultimate", the usual functional abstraction
@@ -35,6 +35,10 @@
  (define flist-ref (curry₁ list-ref))
  (define fvector-ref (curry₁ vector-ref))
  (define equals-to? (curry₁ equal?))
+ (define =to?
+  (lambda (x #!key (same? equal?))
+   (lambda (y)
+    (same? x y))))
 
     (define $  ; Haskell-like suspended application
      (lambda args
@@ -47,6 +51,8 @@
       (cond
        ((one? (length args)) (car args))
        (else args))))
+
+    (define undefined? (=to? (void) same?: eq?))
 
  (define subscripts
   (let ((H (make-hash-table)))
@@ -78,10 +84,10 @@
 
     (define-syntax dest+match/car+cdr
      (syntax-rules (else)
-      ((dbind/car+cdr sexp ((a d) pair-sexp) ... (else null-sexp))
+      ((dest+match/car+cdr sexp ((a d) pair-sexp ...) ... (else null-sexp ...))
        (match sexp
-        (() null-sexp)
-        ((a . d) pair-sexp) ...))))
+        (() (begin null-sexp ...))
+        ((a . d) (begin pair-sexp ...)) ...))))
 
     (define call+stdout
      (lambda (thunk recv)
@@ -253,6 +259,35 @@
      (lambda (H key)
       (cond
        ((hash-table-exists? H key) (values #t (hash-table-ref H key)))
-       (else (values #f (##core#undefined))))))
+       (else (values #f (void))))))
+
+    (define-syntax lambda₁-cases
+     (syntax-rules ()
+      ((lambda₁-cases (type var) clause ...) (lambda (var) (cases type var clause ...)))
+      ((lambda₁-cases type clause ...) (lambda₁-cases (type _) clause ...))))
+
+    (define-syntax let₁ 
+     (syntax-rules ()
+      ((let₁ (var sexp) body ...) (let ((var sexp)) body ...))))
+
+    (define-syntax lambda-tabled
+     (syntax-rules ()
+      ((lambda-tabled args body ...) (letrec-tabled ((bind (lambda args body ...))) bind))))
+
+    (define-syntax rec-tabled
+     (syntax-rules ()
+      ((rec-tabled bind sexp) (letrec-tabled ((bind sexp)) bind))))
+    
+    (define-syntax match₁
+     (syntax-rules ()
+      ((match₁ (bind sexp) body ...) (match sexp (bind (begin body ...))))))
+
+    (define foldl1
+     (lambda (f #!key (H₀ identity))
+      (lambda (l)
+       (cond
+        ((null? l) '())
+        (else (foldl f (H₀ (car l)) (cdr l)))))))
+
 
 )
