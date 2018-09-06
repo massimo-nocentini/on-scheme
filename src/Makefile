@@ -1,12 +1,15 @@
 
 
-current: commons streams series dice-of-doom deploy-shared-libs
+current: commons SC-machine deploy-shared-libs
+	cd ../tests/ && make SC-machine-test
+
+current3: commons streams series dice-of-doom deploy-shared-libs
 	cd ../tests/ && make dice-of-doom-test
 
-current1: commons streams unionfind microkanren reasoned-schemer deploy-shared-libs
+current2: commons streams unionfind microkanren reasoned-schemer deploy-shared-libs
 	cd ../tests/ && make microkanren-test
 
-current2: commons streams series deploy-shared-libs
+current1: commons streams series deploy-shared-libs
 	cd ../tests/ && make streams-test
 
 commons:
@@ -53,7 +56,11 @@ dice-of-doom:
 	csc -dynamic dice-of-doom.scm -J
 	csc -dynamic dice-of-doom.import.scm -J
 
-all: clean commons promise continuations collatz seasoned-schemer unionfind streams series microkanren reasoned-schemer dice-of-doom
+SC-machine:
+	csc -dynamic SC-machine.scm -J
+	csc -dynamic SC-machine.import.scm -J
+
+all: clean commons promise continuations collatz seasoned-schemer unionfind streams series microkanren reasoned-schemer dice-of-doom SC-machine
 	# pass
 
 deploy-shared-libs:

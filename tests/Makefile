@@ -49,4 +49,9 @@ dice-of-doom-test:
 	mv dice-of-doom-test executables/
 	./executables/dice-of-doom-test
 
-run-tests: promise-test collatz-test continuations-test learning-test ackermann-test seasoned-schemer-test unionfind-test streams-test microkanren-test dice-of-doom-test
+SC-machine-test:
+	csc SC-machine-test.scm
+	mv SC-machine-test executables/
+	./executables/SC-machine-test
+
+run-tests: promise-test collatz-test continuations-test learning-test ackermann-test seasoned-schemer-test unionfind-test streams-test microkanren-test dice-of-doom-test SC-machine-test
