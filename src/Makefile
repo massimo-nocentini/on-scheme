@@ -1,6 +1,9 @@
 
 
-current: commons SC-machine deploy-shared-libs
+current: commons continuations deploy-shared-libs
+	cd ../tests/ && make continuations-test
+
+current4: commons SC-machine deploy-shared-libs
 	cd ../tests/ && make SC-machine-test
 
 current3: commons streams series dice-of-doom deploy-shared-libs

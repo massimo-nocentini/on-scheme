@@ -289,5 +289,11 @@
         ((null? l) '())
         (else (foldl f (H₀ (car l)) (cdr l)))))))
 
+    (define-syntax push!
+     (syntax-rules ()
+      ((push! l o) (set! l (cons o l)))))
 
+    (define Φ
+     (lambda (λ)
+      (λ λ))) 
 )
