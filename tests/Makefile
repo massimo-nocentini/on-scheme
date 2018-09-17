@@ -54,4 +54,9 @@ SC-machine-test:
 	mv SC-machine-test executables/
 	./executables/SC-machine-test
 
-run-tests: promise-test collatz-test continuations-test learning-test ackermann-test seasoned-schemer-test unionfind-test streams-test microkanren-test dice-of-doom-test SC-machine-test
+SECD-machine-test:
+	csc SECD-machine-test.scm
+	mv SECD-machine-test executables/
+	./executables/SECD-machine-test
+
+run-tests: promise-test collatz-test continuations-test learning-test ackermann-test seasoned-schemer-test unionfind-test streams-test microkanren-test dice-of-doom-test SC-machine-test SECD-machine-test

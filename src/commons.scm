@@ -289,6 +289,14 @@
         ((null? l) '())
         (else (foldl f (H₀ (car l)) (cdr l)))))))
 
+    (define foldl1/lshift
+     (lambda (f #!key (H₀ identity))
+      (lambda (l)
+       (cond
+        ((null? l) '())
+        (else (let-values (((v tail) (H₀ (car l))))
+               (foldl f v (tail l))))))))
+
     (define-syntax push!
      (syntax-rules ()
       ((push! l o) (set! l (cons o l)))))

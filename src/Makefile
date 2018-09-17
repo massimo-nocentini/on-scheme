@@ -1,10 +1,10 @@
 
 
+current4: commons SECD-machine deploy-shared-libs
+	cd ../tests/ && make SECD-machine-test
+
 current: commons continuations deploy-shared-libs
 	cd ../tests/ && make continuations-test
-
-current4: commons SC-machine deploy-shared-libs
-	cd ../tests/ && make SC-machine-test
 
 current3: commons streams series dice-of-doom deploy-shared-libs
 	cd ../tests/ && make dice-of-doom-test
@@ -63,7 +63,11 @@ SC-machine:
 	csc -dynamic SC-machine.scm -J
 	csc -dynamic SC-machine.import.scm -J
 
-all: clean commons promise continuations collatz seasoned-schemer unionfind streams series microkanren reasoned-schemer dice-of-doom SC-machine
+SECD-machine:
+	csc -dynamic SECD-machine.scm -J
+	csc -dynamic SECD-machine.import.scm -J
+
+all: clean commons promise continuations collatz seasoned-schemer unionfind streams series microkanren reasoned-schemer dice-of-doom SC-machine SECD-machine
 	# pass
 
 deploy-shared-libs:
