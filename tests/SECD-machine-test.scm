@@ -52,60 +52,36 @@
 
      ))
 
-    #;(test 3 ((value E₂) (Id 'a)))
-    #;(test 4 ((value ((extend E₂) `(add1 . ,add1)))
-             (Comb (Id 'add1) (Id 'a))))
 
-    #;(test
-     (Comb
-      (Comb
-       (Id 'p)
-       (Comb
-        (Comb
-         (Id 'm)
-         (Comb
-          (Comb (Id 'p) (Id 'a))
-          (Id 'b)))
-        (Id 'c)))
-      (Comb
-       (Comb (Id 'f) (Id 'a))
-       (Id 'c)))
-     (curryfy '(p (m (p a b) c) (f a c))))
+    (let* ((control (curryfy '((λ (f x) (f (f x))) ² three)))
+           (control₁ (curryfy '((λ (f) (λ (x) (f (f x)))) ² three)))
+           (E ((extend E₀) `(² . ,²) `(three . 3)))
+           (s₀ (status-init E (list control)))
+           #;(→/compiled (rtc (→/compiled E)))
+           (F (lambda (s) 
+               (format #t "~a\n" s)
+               (→/interpreted s)))
+           (→/interpreted* (rtc F)))
 
-    #;(test
-     (Comb
-      (Comb
-       (Id 'p)
-       (Comb
-        (Comb (Id 'f) (Id 'a))
-        (Id 'c)))
-      (Comb
-       (Comb (Id 'm) (Id 'c))
-       (Comb
-        (Comb (Id 'p) (Id 'b))
-        (Id 'a))))
-     (curryfy '(p (f a c) (m c (p b a)))))
+     (print control)
+     (print control₁)
+     (test-assert (equal? control control₁))
 
+     (test "(() #<procedure (bind7399 z102)> ((((λ (f) (λ (x) (f (f x)))) ²) three)) #<unspecified>)" 
+      (to-string (status-init E (list control))))
 
-    #;(test "((p a) b)"
-     (with-output-to-string (τ (display (curryfy '(p a b))))))
-    #;(test "((p ((f a) c)) ((m c) ((p b) a)))"
-     (with-output-to-string (τ (display (curryfy '(p (f a c) (m c (p b a))))))))
+     #;(test "" (to-string (→/interpreted* s₀)))
 
-    #;(let* ((p (lambda (a) (lambda (b) (+ a b))))
-           (m (lambda (a) (lambda (b) (- a b))))
-           (f (lambda (a) (lambda (b) (+ (² a) (² b)))))
-           (control (curryfy '(p (m (p a b) c) (f a c))))
-           (control₁ (curryfy '(p (f a c) (m c (p b a)))))
-           (E ((extend E₀) `(a . 1) `(b . 2) `(c . 3) `(p . ,p) `(m . ,m) `(f . ,f)))
-           (→/interpreted (rtc (→/interpreted E)))
-           (→/compiled (rtc (→/compiled E)))
-           (F (lambda (s) (format #t "~a\n" s))))
-     (test
-      "(() (((p ((m ((p a) b)) c)) ((f a) c))))\n(() (((f a) c) (p ((m ((p a) b)) c)) apply0))\n(() (c (f a) apply0 (p ((m ((p a) b)) c)) apply0))\n((3) ((f a) apply0 (p ((m ((p a) b)) c)) apply0))\n((3) (a f apply0 apply0 (p ((m ((p a) b)) c)) apply0))\n((1 3) (f apply0 apply0 (p ((m ((p a) b)) c)) apply0))\n((#<procedure (f a216)> 1 3) (apply0 apply0 (p ((m ((p a) b)) c)) apply0))\n((#<procedure (f_671 b217)> 3) (apply0 (p ((m ((p a) b)) c)) apply0))\n((10) ((p ((m ((p a) b)) c)) apply0))\n((10) (((m ((p a) b)) c) p apply0 apply0))\n((10) (c (m ((p a) b)) apply0 p apply0 apply0))\n((3 10) ((m ((p a) b)) apply0 p apply0 apply0))\n((3 10) (((p a) b) m apply0 apply0 p apply0 apply0))\n((3 10) (b (p a) apply0 m apply0 apply0 p apply0 apply0))\n((2 3 10) ((p a) apply0 m apply0 apply0 p apply0 apply0))\n((2 3 10) (a p apply0 apply0 m apply0 apply0 p apply0 apply0))\n((1 2 3 10) (p apply0 apply0 m apply0 apply0 p apply0 apply0))\n((#<procedure (p a210)> 1 2 3 10) (apply0 apply0 m apply0 apply0 p apply0 apply0))\n((#<procedure (f_657 b211)> 2 3 10) (apply0 m apply0 apply0 p apply0 apply0))\n((3 3 10) (m apply0 apply0 p apply0 apply0))\n((#<procedure (m a213)> 3 3 10) (apply0 apply0 p apply0 apply0))\n((#<procedure (f_664 b214)> 3 10) (apply0 p apply0 apply0))\n((0 10) (p apply0 apply0))\n((#<procedure (p a210)> 0 10) (apply0 apply0))\n((#<procedure (f_657 b211)> 10) (apply0))\n((10) ())\n"
-      (with-output-to-string (τ ((fmap F)
-                                 (→/interpreted
-                                 (make-status '() (list control)))))))
+     (test `(81 ,'() ,(void)) 
+      (let₁ (s (last (→/interpreted* s₀)))
+       (list 
+        ((○ car status-S) s)
+        (status-C s)
+        (status-D s))))
+
+     #;(test 81
+      ""
+      (with-output-to-string (τ ((fmap F) (→/interpreted* (status-init E (list control)))))))
 
      #;(test
       "(() ((Load 3) (Load 1) (Load #<procedure (f a216)>) Apply Apply (Load 3) (Load 2) (Load 1) (Load #<procedure (p a210)>) Apply Apply (Load #<procedure (m a213)>) Apply Apply (Load #<procedure (p a210)>) Apply Apply))\n((3) ((Load 1) (Load #<procedure (f a216)>) Apply Apply (Load 3) (Load 2) (Load 1) (Load #<procedure (p a210)>) Apply Apply (Load #<procedure (m a213)>) Apply Apply (Load #<procedure (p a210)>) Apply Apply))\n((1 3) ((Load #<procedure (f a216)>) Apply Apply (Load 3) (Load 2) (Load 1) (Load #<procedure (p a210)>) Apply Apply (Load #<procedure (m a213)>) Apply Apply (Load #<procedure (p a210)>) Apply Apply))\n((#<procedure (f a216)> 1 3) (Apply Apply (Load 3) (Load 2) (Load 1) (Load #<procedure (p a210)>) Apply Apply (Load #<procedure (m a213)>) Apply Apply (Load #<procedure (p a210)>) Apply Apply))\n((#<procedure (f_671 b217)> 3) (Apply (Load 3) (Load 2) (Load 1) (Load #<procedure (p a210)>) Apply Apply (Load #<procedure (m a213)>) Apply Apply (Load #<procedure (p a210)>) Apply Apply))\n((10) ((Load 3) (Load 2) (Load 1) (Load #<procedure (p a210)>) Apply Apply (Load #<procedure (m a213)>) Apply Apply (Load #<procedure (p a210)>) Apply Apply))\n((3 10) ((Load 2) (Load 1) (Load #<procedure (p a210)>) Apply Apply (Load #<procedure (m a213)>) Apply Apply (Load #<procedure (p a210)>) Apply Apply))\n((2 3 10) ((Load 1) (Load #<procedure (p a210)>) Apply Apply (Load #<procedure (m a213)>) Apply Apply (Load #<procedure (p a210)>) Apply Apply))\n((1 2 3 10) ((Load #<procedure (p a210)>) Apply Apply (Load #<procedure (m a213)>) Apply Apply (Load #<procedure (p a210)>) Apply Apply))\n((#<procedure (p a210)> 1 2 3 10) (Apply Apply (Load #<procedure (m a213)>) Apply Apply (Load #<procedure (p a210)>) Apply Apply))\n((#<procedure (f_657 b211)> 2 3 10) (Apply (Load #<procedure (m a213)>) Apply Apply (Load #<procedure (p a210)>) Apply Apply))\n((3 3 10) ((Load #<procedure (m a213)>) Apply Apply (Load #<procedure (p a210)>) Apply Apply))\n((#<procedure (m a213)> 3 3 10) (Apply Apply (Load #<procedure (p a210)>) Apply Apply))\n((#<procedure (f_664 b214)> 3 10) (Apply (Load #<procedure (p a210)>) Apply Apply))\n((0 10) ((Load #<procedure (p a210)>) Apply Apply))\n((#<procedure (p a210)> 0 10) (Apply Apply))\n((#<procedure (f_657 b211)> 10) (Apply))\n((10) ())\n"

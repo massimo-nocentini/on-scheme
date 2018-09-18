@@ -38,16 +38,17 @@
                       (cond
                        ((list? c) (Comb acc (curryfy c)))
                        (else (Comb acc (Id c)))))
-                     H₀: (lambda (i) 
+                     H₀: (lambda (i)
                           (cond
                            ((and (list? i) (equal? (car i) 'λ))
                             (letrec ((C (lambda (l)
                                          (cond
-                                          ((null? (cdr l)) (Lambda (car l) 
+                                          ((null? (cdr l)) (Lambda (car l)
                                                             (curryfy (caddr i))))
-                                          (else (Lambda (car l) 
+                                          (else (Lambda (car l)
                                                  (C (cdr l))))))))
                              (C (cadr i))))
+                           ;((list? i) (curryfy i))
                            (else (Id i))))))
 
     (define value
@@ -59,37 +60,68 @@
                                      (V₊ body))))
               (Comb     (rator rand) ((V rator) (V rand)))))))
 
-    #;(define-record status S C)
+    (define-record status S E C D)
 
-    #;(define-record-printer status
+    (define status-init
+     (lambda (E C)
+       (make-status '() E C (void))))
+
+    (define-record-printer status
      (lambda (s out)
-      (let₁ (P (dbind/status (lambda (s S C)
-                              (format out "(~a ~a)" S C))))
+      (let₁ (P (dbind/status (lambda (s S E C D)
+                              (format out "(~a ~a ~a ~a)" S E C D))))
        (P s))))
 
-    #;(define dbind/status
+    (define dbind/status
      (lambda (recv)
       (lambda (s)
-       (recv s (status-S s) (status-C s)))))
+       (recv s (status-S s) (status-E s) (status-C s) (status-D s)))))
 
-    #;(define →/interpreted
+    (define-record closure C₁ var E)
+
+    (define dbind/closure
+     (lambda (recv)
+      (lambda (c)
+       (recv c (closure-C₁ c) (closure-var c) (closure-E c)))))
+
+    (define-record-printer closure
+     (lambda (c out)
+      (let₁ (P (dbind/closure (lambda (_ C₁ var E)
+                               (format out "[~a ~a ~a]" C₁ var E))))
+       (P c))))
+
+    (define →/interpreted
      (let₁ (sym/apply (gensym 'apply))
-      (lambda (E)
-       (dbind/status
-        (lambda (s S C)
-         (cond
-          ((null? C) s)
-          (else (let-values (((C₀ C₊) (car+cdr C)))
-                 (cond
-                  ((and (symbol? C₀) (eq? C₀ sym/apply))
-                   (match₁ ((f y . S₊) S)
-                    (make-status (cons (f y) S₊) C₊)))
-                  (else (cases combination C₀
-                         (Id (id) (let₁ (stack (cons (E id) S))
-                                   (make-status stack C₊)))
-                         (Comb (rator rand) (let* ((cmds (list rand rator sym/apply))
-                                                   (control (append cmds C₊)))
-                                             (make-status S control))))))))))))))
+      (dbind/status
+       (lambda (s S E C D)
+        (cond
+         ((null? C)
+          (let₁ (extend-dump (dbind/status
+                              (lambda (_ S₁ E₁ C₁ D₁)
+                               (let₁ (S₂ (cons (car S) S₁))
+                                (make-status S₂ E₁ C₁ D₁)))))
+           (extend-dump D)))
+         (else (let-values (((C₀ C₊) (car+cdr C)))
+                (cond
+                 ((and (symbol? C₀) (eq? C₀ sym/apply))
+                  (match₁ ((f y . S₊) S)
+                   (cond/λ f
+                    (closure? (dbind/closure
+                               (lambda (_ C₁ j E₁)
+                                (let ((S₂ '())
+                                      (E₂ ((extend E₁) `(,j . ,y)))
+                                      (C₂ (list C₁))
+                                      (D₂ (make-status S₊ E C₊ D)))
+                                 (make-status S₂ E₂ C₂ D₂)))))
+                    (else (K (make-status (cons (f y) S₊) E C₊ D))))))
+                 (else (cases expression C₀
+                        (Id (id) (let₁ (S₁ (cons (E id) S))
+                                  (make-status S₁ E C₊ D)))
+                        (Lambda (var body) (let₁ (c (make-closure body var E))
+                                            (make-status (cons c S) E C₊ D)))
+                        (Comb (rator rand) (let* ((cmds (list rand rator sym/apply))
+                                                  (C₁ (append cmds C₊)))
+                                            (make-status S E C₁ D)))))))))))))
 
     #;(define-datatype instruction instruction?
      (Load (selector procedure?))
@@ -120,13 +152,15 @@
                  (Apply () (match₁ ((f y . S₊) S)
                             (make-status (cons (f y) S₊) C₊)))))))))))
 
-    #;(define rtc ; reflexive and transitive closure
+    (define rtc ; reflexive and transitive closure
      (lambda (→)
       (letrec ((→* (lambda (s α)
                     (cond
-                     ((null? (status-C s)) α)
+                     ((and (null? (status-C s)) (undefined? (status-D s))) α)
                      (else (let₁ (r (→ s))
                             (→* r (cons r α))))))))
-       (lambda (s) (reverse! (→* s (list s)))))))
+       (lambda (s)
+        (format #t "~a" s)
+        (reverse! (→* s (list s)))))))
 
     )

@@ -304,4 +304,13 @@
     (define Φ
      (lambda (λ)
       (λ λ))) 
+
+    (define-syntax cond/λ
+     (syntax-rules (else)
+      ((cond/λ v
+        (when then) ...
+        (else otherwise))
+       (cond
+        ((when v) (then v)) ...
+        (else (otherwise v))))))
 )
