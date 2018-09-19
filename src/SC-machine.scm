@@ -7,19 +7,6 @@
  (use data-structures datatype extras)
  (use commons)
 
- (define extend
-  (lambda (E #!key (same? equal?))
-   (let₁ (extend₁ (lambda (p E)
-                   (lambda-tabled (z)
-                    (let-values (((x y) (car+cdr p)))
-                     (cond
-                      ((same? x z) y)
-                      (else (E z)))))))
-    (lambda assocs
-     (foldr extend₁ E assocs)))))
-
- (define E₀ (lambda _ (void)))
- (define E-null? (=to? E₀ same?: eq?))
 
     (define-datatype combination combination?
      (Id    (identifier symbol?))
@@ -58,17 +45,17 @@
        (recv s (status-S s) (status-C s)))))
 
     (define →/interpreted
-     (let₁ (sym/apply (gensym 'apply))
+     (let* ((sym/apply (gensym 'apply))
+            (is-apply? (=to? sym/apply)))
       (lambda (E)
        (dbind/status
         (lambda (s S C)
          (cond
-          ((null? C) s)
-          (else (let-values (((C₀ C₊) (car+cdr C)))
+          ((null? C) s) ; fixed-point termination condition
+          (else (match₁ ((C₀ . C₊) C)
                  (cond
-                  ((and (symbol? C₀) (eq? C₀ sym/apply))
-                   (match₁ ((f y . S₊) S)
-                    (make-status (cons (f y) S₊) C₊)))
+                  ((is-apply? C₀) (match₁ ((f y . S₊) S)
+                                   (make-status (cons (f y) S₊) C₊)))
                   (else (cases combination C₀
                          (Id (id) (let₁ (stack (cons (E id) S))
                                    (make-status stack C₊)))
@@ -105,13 +92,5 @@
                  (Apply () (match₁ ((f y . S₊) S)
                             (make-status (cons (f y) S₊) C₊)))))))))))
 
-    (define rtc ; reflexive and transitive closure
-     (lambda (→)
-      (letrec ((→* (lambda (s α)
-                    (cond
-                     ((null? (status-C s)) α)
-                     (else (let₁ (r (→ s))
-                            (→* r (cons r α))))))))
-       (lambda (s) (reverse! (→* s (list s)))))))
 
     )

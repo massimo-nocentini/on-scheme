@@ -7,19 +7,6 @@
  (use data-structures datatype extras)
  (use commons)
 
- (define extend
-  (lambda (E #!key (same? equal?))
-   (let₁ (extend₁ (lambda (p E)
-                   (lambda-tabled (z)
-                    (let-values (((x y) (car+cdr p)))
-                     (cond
-                      ((same? x z) y)
-                      (else (E z)))))))
-    (lambda assocs
-     (foldr extend₁ E assocs)))))
-
- (define E₀ (lambda _ (void)))
- (define E-null? (=to? E₀ same?: eq?))
 
     (define-datatype expression expression?
      (Id        (identifier symbol?))
@@ -91,29 +78,30 @@
        (P c))))
 
     (define →/interpreted
-     (let₁ (sym/apply (gensym 'apply))
+     (let* ((sym/apply (gensym 'apply))
+            (is-apply? (=to? sym/apply)))
       (dbind/status
        (lambda (s S E C D)
         (cond
+         ((and (null? C) (undefined? D)) s) ; termination condition for fixed-point
          ((null? C)
           (let₁ (extend-dump (dbind/status
                               (lambda (_ S₁ E₁ C₁ D₁)
                                (let₁ (S₂ (cons (car S) S₁))
                                 (make-status S₂ E₁ C₁ D₁)))))
            (extend-dump D)))
-         (else (let-values (((C₀ C₊) (car+cdr C)))
+         (else (match₁ ((C₀ . C₊) C)
                 (cond
-                 ((and (symbol? C₀) (eq? C₀ sym/apply))
-                  (match₁ ((f y . S₊) S)
-                   (cond/λ f
-                    (closure? (dbind/closure
-                               (lambda (_ C₁ j E₁)
-                                (let ((S₂ '())
-                                      (E₂ ((extend E₁) `(,j . ,y)))
-                                      (C₂ (list C₁))
-                                      (D₂ (make-status S₊ E C₊ D)))
-                                 (make-status S₂ E₂ C₂ D₂)))))
-                    (else (K (make-status (cons (f y) S₊) E C₊ D))))))
+                 ((is-apply? C₀) (match₁ ((f y . S₊) S)
+                                  (cond/λ f
+                                   (closure? (dbind/closure
+                                              (lambda (_ C₁ j E₁)
+                                               (let ((S₂ '())
+                                                     (E₂ ((extend E₁) `(,j . ,y)))
+                                                     (C₂ (list C₁))
+                                                     (D₂ (make-status S₊ E C₊ D)))
+                                                (make-status S₂ E₂ C₂ D₂)))))
+                                   (else (K (make-status (cons (f y) S₊) E C₊ D))))))
                  (else (cases expression C₀
                         (Id (id) (let₁ (S₁ (cons (E id) S))
                                   (make-status S₁ E C₊ D)))
@@ -152,15 +140,5 @@
                  (Apply () (match₁ ((f y . S₊) S)
                             (make-status (cons (f y) S₊) C₊)))))))))))
 
-    (define rtc ; reflexive and transitive closure
-     (lambda (→)
-      (letrec ((→* (lambda (s α)
-                    (cond
-                     ((and (null? (status-C s)) (undefined? (status-D s))) α)
-                     (else (let₁ (r (→ s))
-                            (→* r (cons r α))))))))
-       (lambda (s)
-        (format #t "~a" s)
-        (reverse! (→* s (list s)))))))
 
     )

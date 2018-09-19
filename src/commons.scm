@@ -6,7 +6,7 @@
 
  (use srfi-1 srfi-69) ; `use` only for `srfi`s
  (use datatype matchable)
- (use numbers data-structures ports test lolevel)
+ (use numbers data-structures ports test lolevel extras)
 
  (define-syntax λ ; "little-lambda", or "lambda the ultimate", the usual functional abstraction
   (syntax-rules ()
@@ -313,4 +313,29 @@
        (cond
         ((when v) (then v)) ...
         (else (otherwise v))))))
+
+    (define extend
+     (lambda (E #!key (same? equal?))
+      (let₁ (extend₁ (lambda (p E)
+                      (lambda-tabled (z)
+                       (match₁ ((x . y) p)
+                        (cond
+                         ((same? x z) y)
+                         (else (E z)))))))
+       (lambda assocs
+        (foldr extend₁ E assocs)))))
+
+    (define E₀ (lambda _ (void)))
+    (define E-null? (=to? E₀ same?: eq?))
+
+    (define rtc ; reflexive and transitive closure
+     (lambda (→)
+      (letrec ((→* (lambda (s α)
+                    (let₁ (r (→ s))
+                     (cond
+                      ((eq? s r) α) ; fixed-point found
+                      (else (→* r (cons r α))))))))
+       (lambda (s)
+        (reverse! (→* s (list s)))))))
+
 )

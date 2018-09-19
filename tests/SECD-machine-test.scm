@@ -67,7 +67,7 @@
      (print control₁)
      (test-assert (equal? control control₁))
 
-     (test "(() #<procedure (bind7399 z102)> ((((λ (f) (λ (x) (f (f x)))) ²) three)) #<unspecified>)" 
+     (test "(() #<procedure (bind11561182 z1185)> ((((λ (f) (λ (x) (f (f x)))) ²) three)) #<unspecified>)"
       (to-string (status-init E (list control))))
 
      #;(test "" (to-string (→/interpreted* s₀)))
