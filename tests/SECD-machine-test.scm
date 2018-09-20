@@ -28,6 +28,8 @@
                  (Id 'c)))
                (Id 'd))))
     (test "((λ (x) (((p ((* (² x)) a)) ((* x) b)) c)) d)" (to-string e))
+    (test (Lambda 'x (Id 'y)) (curryfy '(λ (x) y)))
+    (test (Lambda 'x (Comb (Id 'y) (Id 'z))) (curryfy '(λ (x) (y z))))
     (test e (curryfy `((λ (,v) (p (* (² ,v) a) (* ,v b) c)) d)))
     (test 27 ((λ (x a b c) (+ (* (² x) a) (* x b) c)) 4 1 2 3))
     (let₁ (p (λ (x) (λ (y) (λ (z) (+ x y z)))))

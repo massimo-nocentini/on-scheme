@@ -4,7 +4,7 @@
  (import chicken scheme)
 
  (use srfi-1)
- (use data-structures datatype extras)
+ (use data-structures datatype extras matchable)
  (use commons)
 
 
@@ -20,23 +20,19 @@
        (Lambda  (var body) (format out "(λ (~a) ~a)" var body))
        (Comb    (rator rand) (format out "(~a ~a)" rator rand)))))
 
-    (define curryfy (foldl1
-                     (lambda (acc c)
-                      (cond
-                       ((list? c) (Comb acc (curryfy c)))
-                       (else (Comb acc (Id c)))))
-                     H₀: (lambda (i)
-                          (cond
-                           ((and (list? i) (equal? (car i) 'λ))
-                            (letrec ((C (lambda (l)
-                                         (cond
-                                          ((null? (cdr l)) (Lambda (car l)
-                                                            (curryfy (caddr i))))
-                                          (else (Lambda (car l)
-                                                 (C (cdr l))))))))
-                             (C (cadr i))))
-                           ;((list? i) (curryfy i))
-                           (else (Id i))))))
+    (define curryfy
+     (lambda (sexp)
+      (cond
+       ((symbol? sexp) (Id sexp))
+       ((list? sexp) (match sexp
+                      (('λ (x) body) (Lambda x (curryfy body)))
+                      (('λ (x y ...) body) (Lambda x (curryfy `(λ (,@y) ,body))))
+                      ((rator rand) (Comb (curryfy rator) (curryfy rand)))
+                      ((rator rand ... rand₊) (Comb 
+                                                (curryfy `(,rator ,@rand)) 
+                                                (curryfy rand₊)))
+                      (else (error "match error for" sexp))))
+       (else (error "cond error for:" sexp)))))
 
     (define value
      (lambda (E)

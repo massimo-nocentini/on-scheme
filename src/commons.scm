@@ -308,10 +308,10 @@
     (define-syntax cond/λ
      (syntax-rules (else)
       ((cond/λ v
-        (when then) ...
+        (p? then) ...
         (else otherwise))
        (cond
-        ((when v) (then v)) ...
+        ((p? v) (then v)) ...
         (else (otherwise v))))))
 
     (define extend
@@ -325,7 +325,7 @@
        (lambda assocs
         (foldr extend₁ E assocs)))))
 
-    (define E₀ (lambda _ (void)))
+    (define E₀ (K (void)))
     (define E-null? (=to? E₀ same?: eq?))
 
     (define rtc ; reflexive and transitive closure

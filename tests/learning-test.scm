@@ -97,6 +97,19 @@
      (test "matching a quoted symbol"
       'x (match '(1 x 3)
           ((1 y 3) y)))
+
+     (test '(b c)
+      (match '(a b c) 
+       (('a x ...) x)))
+     
+     (test 'else (match '(a b c) 
+                  (('b x ...) x)
+                  (else 'else)))
+
+     (test '(λ (b c) d)
+      (let₁ (l '(a (b c) d))
+       (match l (('a (x ...) y) `(λ (,@x) ,y)))))
+      
     )
 
     (test-group "OUTPUT PORTS"
