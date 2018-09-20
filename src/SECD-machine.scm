@@ -3,7 +3,7 @@
 
  (import chicken scheme)
 
- (use srfi-1)
+ (use srfi-1 srfi-69)
  (use data-structures datatype extras matchable)
  (use commons)
 
@@ -51,8 +51,9 @@
 
     (define-record-printer status
      (lambda (s out)
-      (let₁ (P (dbind/status (lambda (s S E C D)
-                              (format out "(~a ~a ~a ~a)" S E C D))))
+      (let₁ (P (dbind/status 
+                (lambda (s S E C D)
+                 (format out "(~a ~a ~a ~a)" S (E->alist E) C D))))
        (P s))))
 
     (define dbind/status

@@ -225,26 +225,33 @@
                               (lambda args
                                (↑ args f)))))))
 
+    (define tabled/get-hidden-hash-table (gensym))
+
     (define-syntax define-tabled
      (syntax-rules (lambda)
       ((define-tabled name (lambda (args ...) body ...))
+       (define-tabled name _ (lambda (args ...) body ...)))
+      ((define-tabled name λH (lambda (args ...) body ...))
        (define name
-        (let ((H (make-hash-table test: equal?)))
-         (letrec ((name (lambda (args ...)
-                        (let ((k `(,args ...)))
-                         (let-values (((found v) (hash-table-ref/maybe H k)))
-                          (unless found
-                           (set! v (begin body ...))
-                           (hash-table-set! H k v))
-                          v)))))
-         name))))))
+        (let* ((H (make-hash-table test: equal?))
+               (λH (τ H)))
+         (letrec ((name (lambda (args ... #!key (fresh #f) (store #t))
+                         (let ((k `(,args ...)))
+                          (let-values (((found v) (hash-table-ref/maybe H k)))
+                           (unless (and found (not fresh))
+                            (set! v (begin body ...))
+                            (when store (hash-table-set! H k v)))
+                           v)))))
+          name))))))
 
     (define-syntax letrec-tabled
      (syntax-rules (lambda)
       ((letrec-tabled ((name (lambda (args ...) λ-body ...)) ...) body ...)
-       (let () ; to limit the scope of tabled definitions; 
-               ; on the contrary, `begin` doesn't limit their scope.
-        (define-tabled name (lambda (args ...) λ-body ...)) ... 
+       (letrec-tabled ((name _ (lambda (args ...) λ-body ...)) ...) body ...))
+      ((letrec-tabled ((name H (lambda (args ...) λ-body ...)) ...) body ...)
+       (let ()  ; to limit the scope of tabled definitions;
+                ; on the contrary, `begin` doesn't limit their scope.
+        (define-tabled name H (lambda (args ...) λ-body ...)) ...
         (begin body ...)))))
 
     (define hash-table-ref/store
@@ -266,18 +273,15 @@
       ((lambda₁-cases (type var) clause ...) (lambda (var) (cases type var clause ...)))
       ((lambda₁-cases type clause ...) (lambda₁-cases (type _) clause ...))))
 
-    (define-syntax let₁ 
+    (define-syntax let₁
      (syntax-rules ()
       ((let₁ (var sexp) body ...) (let ((var sexp)) body ...))))
 
     (define-syntax lambda-tabled
-     (syntax-rules ()
-      ((lambda-tabled args body ...) (letrec-tabled ((bind (lambda args body ...))) bind))))
+     (syntax-rules (→)
+      ((lambda-tabled args body ...) (lambda-tabled _ args body ...))
+      ((lambda-tabled H → args body ...) (letrec-tabled ((bind H (lambda args body ...))) bind))))
 
-    (define-syntax rec-tabled
-     (syntax-rules ()
-      ((rec-tabled bind sexp) (letrec-tabled ((bind sexp)) bind))))
-    
     (define-syntax match₁
      (syntax-rules ()
       ((match₁ (bind sexp) body ...) (match sexp (bind (begin body ...))))))
@@ -303,7 +307,7 @@
 
     (define Φ
      (lambda (λ)
-      (λ λ))) 
+      (λ λ)))
 
     (define-syntax cond/λ
      (syntax-rules (else)
@@ -316,16 +320,33 @@
 
     (define extend
      (lambda (E #!key (same? equal?))
-      (let₁ (extend₁ (lambda (p E)
-                      (lambda-tabled (z)
-                       (match₁ ((x . y) p)
-                        (cond
-                         ((same? x z) y)
-                         (else (E z)))))))
+      (let₁ (extend₁
+             (lambda (p E)
+              (letrec-tabled ((E₁ H (lambda (z)
+                                     (cond
+                                      ((eq? tabled/get-hidden-hash-table z)
+                                       (hash-table-merge (H) (E z fresh: #t store: #f)))
+                                      (else (match₁ ((x . y) p)
+                                             (cond
+                                              ((same? x z) y)
+                                              (else (E z)))))))))
+               E₁)))
        (lambda assocs
         (foldr extend₁ E assocs)))))
 
-    (define E₀ (K (void)))
+    (define E₀
+     (lambda (z #!key (fresh (void)) (store (void)))
+      (cond
+       ((eq? tabled/get-hidden-hash-table z) (make-hash-table))
+       (else (void)))))
+
+    (define E->alist
+     (lambda (E)
+      (hash-table-fold
+       (E tabled/get-hidden-hash-table fresh: #t store: #f)
+       (lambda (k v acc) (cons `(,k . ,v) acc))
+       '())))
+
     (define E-null? (=to? E₀ same?: eq?))
 
     (define rtc ; reflexive and transitive closure

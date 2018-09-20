@@ -1,7 +1,7 @@
 
 (import chicken scheme)
 
-(use srfi-1 srfi-13)
+(use srfi-1 srfi-13 srfi-69)
 (use test matchable numbers)
 
 (use commons)
@@ -63,6 +63,10 @@
       (hash-table-set! H 'hello 'world)
       (hash-table-set! H 'hello 'new-world)
       (test 'new-world (hash-table-ref H 'hello)))
+
+     (test '(3 4 5)
+      (hash-table-fold (alist->hash-table '((a . 3) (b . 4) (c . 5)))
+       (lambda (k v acc) (cons v acc)) '()))
 
     )
 
@@ -287,5 +291,28 @@
     (test 125 (ackermann 3 4))
 
     )
+
+
+    #;(define-syntax d/τ
+     (syntax-rules ()
+      ((d/τ name) (display 'name))))
+
+    #;(define-syntax define/τ
+     (syntax-rules ()
+      ((define/τ name) 
+       (begin-for-syntax
+        (let* ((name/1 (symbol-append 'name '/1))
+               (name/H (symbol-append 'name '/H)))
+         (define-values (name/1 name/H)
+            (values 1 2)))))))
+
+    #;(d/τ hello)
+
+    #;(define/τ my)
+
+
+    #;(format #t "~a ~a" (my/1 4) (my/h))
+     
+
 
 (test-exit)

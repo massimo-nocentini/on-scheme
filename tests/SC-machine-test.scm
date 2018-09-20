@@ -13,6 +13,13 @@
     (test 4 (E₂ 'b))
     (test-assert (undefined? (E₂ 'c)))
     (test 3 (E₂ 'a)) ; memoized
+    (test `(((c) . ,(void)) ((a) . 3) ((b) . 4)) (E->alist E₂))
+
+    (define E₃ ((extend E₂) '(b . 0)))
+
+    (test `(((c) . ,(void)) ((a) . 3) ((b) . 4)) (E->alist E₃))
+    (test 0 (E₃ 'b)) ; invalidate the cache
+    (test `(((c) . ,(void)) ((a) . 3) ((b) . 0)) (E->alist E₃))
 
     (test-assert (E-null? E₀))
     (test-fail (E-null? E₁))
