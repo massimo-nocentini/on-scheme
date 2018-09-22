@@ -108,6 +108,43 @@
                                                   (C₁ (append cmds C₊)))
                                             (make-status S E C₁ D)))))))))))))
 
+    (define-datatype de-bruijn de-bruijn?
+     (Id₋       (id symbol?))
+     (Id₊       (index number?))
+     (Lambda₊   (body de-bruijn?))
+     (Comb₊     (rator de-bruijn?) (rand de-bruijn?)))
+
+    (define-record-printer de-bruijn
+     (lambda (e out)
+      (cases de-bruijn e
+       (Id₋     (id) (format out "~a" id))
+       (Id₊     (index) (format out "~a" index))
+       (Lambda₊ (body) (format out "(λ ~a)" body))
+       (Comb₊   (rator rand) (format out "(~a ~a)" rator rand)))))
+
+    (define expression->de-bruijn
+     (lambda (e)
+      (letrec ((deB (lambda (e E)
+                     (let₁ (position (lambda (v) (list-index (=to? v) E)))
+                      (cases expression e
+                       (Id (i)              (cond/λ (position i)
+                                             (number?   (lambda (p) (Id₊ p)))
+                                             (else      (K (Id₋ i)))))
+                       (Lambda (var body)   (Lambda₊ (deB body (cons var E))))
+                       (Comb (rator rand)   (Comb₊ (deB rator E) (deB rand E))))))))
+       (deB e '()))))
+       
+    (define value₊
+     (lambda (E)
+      (lambda (e)
+       (letrec ((deB (lambda (e F)
+                      (cases de-bruijn e
+                       (Id₋ (id) (E id))
+                       (Id₊ (index) (list-ref F index))
+                       (Lambda₊ (body) (lambda (y) (deB body (cons y F))))
+                       (Comb₊ (rator rand) ((deB rator F) (deB rand F)))))))
+        (deB e '())))))
+
     #;(define-datatype instruction instruction?
      (Load (selector procedure?))
      (Apply))

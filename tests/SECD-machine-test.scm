@@ -72,12 +72,21 @@
 
      #;(test "" (to-string (→/interpreted* s₀)))
 
-     (test `(81 ,'() ,(void)) 
+     (test `(81 ,"(((three) . 3) ((²) . #<procedure (commons#² x394)>))" ,'() ,(void)) 
       (let₁ (s (last (→/interpreted* s₀)))
        (list 
         ((○ car status-S) s)
+        ((○ to-string E->alist status-E) s)
         (status-C s)
         (status-D s))))
+
+     (let₁ (t '(λ (x) ((g x) (λ (y) ((λ (z) (x y z)) (f x))))))
+      (test "(λ ((g 0) (λ ((λ ((2 1) 0)) (f 1)))))"
+       ((○ to-string expression->de-bruijn curryfy) t)))
+
+    (let* ((E ((extend E₀) `(three . 3) `(four . 4) `(+ . ,(curry₁ +))))
+           (t (curryfy `((λ (p x) (p x three)) + four))))
+     (test 7 ((○ (value₊ E) expression->de-bruijn) t)))
 
      #;(test 81
       ""
