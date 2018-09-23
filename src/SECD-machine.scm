@@ -124,14 +124,14 @@
 
     (define expression->de-bruijn
      (lambda (e)
-      (letrec ((deB (lambda (e E)
-                     (let₁ (position (lambda (v) (list-index (=to? v) E)))
+      (letrec ((deB (lambda (e F)
+                     (let₁ (position (lambda (v) (list-index (=to? v) F)))
                       (cases expression e
                        (Id (i)              (cond/λ (position i)
                                              (number?   (lambda (p) (Id₊ p)))
                                              (else      (K (Id₋ i)))))
-                       (Lambda (var body)   (Lambda₊ (deB body (cons var E))))
-                       (Comb (rator rand)   (Comb₊ (deB rator E) (deB rand E))))))))
+                       (Lambda (var body)   (Lambda₊ (deB body (cons var F))))
+                       (Comb (rator rand)   (Comb₊ (deB rator F) (deB rand F))))))))
        (deB e '()))))
        
     (define value₊
@@ -145,15 +145,27 @@
                        (Comb₊ (rator rand) ((deB rator F) (deB rand F)))))))
         (deB e '())))))
 
-    #;(define-datatype instruction instruction?
-     (Load (selector procedure?))
-     (Apply))
+    (define-datatype instruction instruction?
+     (Load          (selector procedure?))
+     (Apply)
+     (Position  (index number?))
+     (Closure   (control list?))) ; [instruction], precisely.
 
-    #;(define-record-printer instruction
+    (define-record-printer instruction
      (lambda (i out)
       (cases instruction i
        (Load (selector) (format out "(Load ~a)" (selector (gensym))))
-       (Apply () (format out "Apply")))))
+       (Apply () (format out "Apply"))
+       (Position (index) (format out "(Position ~a)" index))
+       (Closure (instructions) (cond
+                                ((null? instructions) (format out "[]"))
+                                (else (match₁ ((init ... last) instructions)
+                                       (begin
+                                        (format out "[")
+                                        (for-each (lambda (instr) 
+                                                   (format out "~a " instr))
+                                         init)
+                                        (format out "~a]" last)))))))))
 
     #;(define compile
      (lambda (E)

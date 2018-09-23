@@ -340,6 +340,13 @@
        ((eq? tabled/get-hidden-hash-table z) (make-hash-table))
        (else (void)))))
 
+    (define E⁺
+     (lambda (z #!key (fresh (void)) (store (void)))
+      (cond
+       ((eq? tabled/get-hidden-hash-table z) (make-hash-table))
+       ((atom? z) (with-exception-handler (K (void)) (τ (eval z))))
+       (else (void)))))
+
     (define E->alist
      (lambda (E)
       (hash-table-fold

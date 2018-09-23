@@ -10,21 +10,21 @@
            (e (Comb
                (Lambda v
                 (Comb
-                 (Comb 
-                  (Comb 
-                   (Id 'p) 
-                   (Comb 
-                    (Comb 
-                     (Id '*) 
-                     (Comb 
-                      (Id '²) 
-                      (Id v))) 
+                 (Comb
+                  (Comb
+                   (Id 'p)
+                   (Comb
+                    (Comb
+                     (Id '*)
+                     (Comb
+                      (Id '²)
+                      (Id v)))
                     (Id 'a)))
-                  (Comb 
-                   (Comb 
-                    (Id '*) 
-                    (Id v)) 
-                   (Id 'b))) 
+                  (Comb
+                   (Comb
+                    (Id '*)
+                    (Id v))
+                   (Id 'b)))
                  (Id 'c)))
                (Id 'd))))
     (test "((λ (x) (((p ((* (² x)) a)) ((* x) b)) c)) d)" (to-string e))
@@ -34,21 +34,21 @@
     (test 27 ((λ (x a b c) (+ (* (² x) a) (* x b) c)) 4 1 2 3))
     (let₁ (p (λ (x) (λ (y) (λ (z) (+ x y z)))))
      (test 27 ((λ (x a b c) (((p (((curry₁ *) (² x)) a)) (((curry₁ *) x) b)) c)) 4 1 2 3)))
-    (let₁ (E ((extend E₀) 
+    (let₁ (E ((extend E₀)
               `(a . ,1) `(b . ,2) `(c . ,3) `(d . ,4) `(o . ,-24)
               `(p . ,(lambda (x) (lambda (y) (lambda (z) (+ x y z)))))
               `(* . ,(lambda (x) (lambda (y) (* x y))))
               `(² . ,²)))
      (test 27 ((value E) e))
-     
-     (test "((λ (x) (λ (y) (((p ((* (² x)) a)) ((* x) b)) y))) d)" 
+
+     (test "((λ (x) (λ (y) (((p ((* (² x)) a)) ((* x) b)) y))) d)"
       ((○ to-string curryfy) `((λ (,v y) (p (* (² ,v) a) (* ,v b) y)) d)))
 
-     (test-assert ((○ procedure? (value E) curryfy) 
+     (test-assert ((○ procedure? (value E) curryfy)
                    `((λ (,v y) (p (* (² ,v) a) (* ,v b) y)) d)))
-     
+
      (let₁ (e₁ `((λ (,v y) (p (* (² ,v) a) (* ,v b) y)) d o))
-      (test "(((λ (x) (λ (y) (((p ((* (² x)) a)) ((* x) b)) y))) d) o)" 
+      (test "(((λ (x) (λ (y) (((p ((* (² x)) a)) ((* x) b)) y))) d) o)"
        ((○ to-string curryfy) e₁))
       (test 0 ((○ (value E) curryfy) e₁)))
 
@@ -60,7 +60,7 @@
            (E ((extend E₀) `(² . ,²) `(three . 3)))
            (s₀ (status-init E (list control)))
            #;(→/compiled (rtc (→/compiled E)))
-           (F (lambda (s) 
+           (F (lambda (s)
                (format #t "~a\n" s)
                (→/interpreted s)))
            (→/interpreted* (rtc F)))
@@ -72,9 +72,9 @@
 
      #;(test "" (to-string (→/interpreted* s₀)))
 
-     (test `(81 ,"(((three) . 3) ((²) . #<procedure (commons#² x394)>))" ,'() ,(void)) 
+     (test `(81 ,"(((three) . 3) ((²) . #<procedure (commons#² x394)>))" ,'() ,(void))
       (let₁ (s (last (→/interpreted* s₀)))
-       (list 
+       (list
         ((○ car status-S) s)
         ((○ to-string E->alist status-E) s)
         (status-C s)
@@ -84,9 +84,16 @@
       (test "(λ ((g 0) (λ ((λ ((2 1) 0)) (f 1)))))"
        ((○ to-string expression->de-bruijn curryfy) t)))
 
+
+     #;(let ((x 3) (y 4) (z 5)
+           (t (curryfy '((λ (p) (p 3 4 5)) +))))
+      (test 12 ((○ (value₊ E⁺) expression->de-bruijn) t)))
+
+
     (let* ((E ((extend E₀) `(three . 3) `(four . 4) `(+ . ,(curry₁ +))))
            (t (curryfy `((λ (p x) (p x three)) + four))))
-     (test 7 ((○ (value₊ E) expression->de-bruijn) t)))
+     (test 7 ((○ (value₊ E) expression->de-bruijn) t))
+     #;(test 7 ((○ (value₊ E⁺) expression->de-bruijn) t)))
 
      #;(test 81
       ""
@@ -98,10 +105,10 @@
                                  (→/compiled
                                   (make-status '() ((compile E) control)))))))
 
-     #;(test 
+     #;(test
       "(() (((p ((f a) c)) ((m c) ((p b) a)))))\n(() (((m c) ((p b) a)) (p ((f a) c)) apply0))\n(() (((p b) a) (m c) apply0 (p ((f a) c)) apply0))\n(() (a (p b) apply0 (m c) apply0 (p ((f a) c)) apply0))\n((1) ((p b) apply0 (m c) apply0 (p ((f a) c)) apply0))\n((1) (b p apply0 apply0 (m c) apply0 (p ((f a) c)) apply0))\n((2 1) (p apply0 apply0 (m c) apply0 (p ((f a) c)) apply0))\n((#<procedure (p a210)> 2 1) (apply0 apply0 (m c) apply0 (p ((f a) c)) apply0))\n((#<procedure (f_657 b211)> 1) (apply0 (m c) apply0 (p ((f a) c)) apply0))\n((3) ((m c) apply0 (p ((f a) c)) apply0))\n((3) (c m apply0 apply0 (p ((f a) c)) apply0))\n((3 3) (m apply0 apply0 (p ((f a) c)) apply0))\n((#<procedure (m a213)> 3 3) (apply0 apply0 (p ((f a) c)) apply0))\n((#<procedure (f_664 b214)> 3) (apply0 (p ((f a) c)) apply0))\n((0) ((p ((f a) c)) apply0))\n((0) (((f a) c) p apply0 apply0))\n((0) (c (f a) apply0 p apply0 apply0))\n((3 0) ((f a) apply0 p apply0 apply0))\n((3 0) (a f apply0 apply0 p apply0 apply0))\n((1 3 0) (f apply0 apply0 p apply0 apply0))\n((#<procedure (f a216)> 1 3 0) (apply0 apply0 p apply0 apply0))\n((#<procedure (f_671 b217)> 3 0) (apply0 p apply0 apply0))\n((10 0) (p apply0 apply0))\n((#<procedure (p a210)> 10 0) (apply0 apply0))\n((#<procedure (f_657 b211)> 0) (apply0))\n((10) ())\n"
-      (with-output-to-string (τ ((fmap F) 
-                                 (→/interpreted 
+      (with-output-to-string (τ ((fmap F)
+                                 (→/interpreted
                                   (make-status '() (list control₁))))))))
 
 
