@@ -59,11 +59,13 @@
            (control₁ (curryfy '((λ (f) (λ (x) (f (f x)))) ² three)))
            (E ((extend E₀) `(² . ,²) `(three . 3)))
            (s₀ (status-init E (list control)))
-           #;(→/compiled (rtc (→/compiled E)))
-           (F (lambda (s)
-               (format #t "~a\n" s)
-               (→/interpreted s)))
-           (→/interpreted* (rtc F)))
+           (s₁ (status-init '() ((○ compile expression->de-bruijn) control)))
+           (F (lambda (→)
+               (lambda (s)
+                (format #t "~a\n" s)
+                (→ s))))
+           (→/interpreted* (rtc (F →/interpreted)))
+           (→/compiled* (rtc (F (→/compiled E)))))
 
      (test-assert (equal? control control₁))
 
@@ -95,6 +97,16 @@
      (test 7 ((○ (value₊ E) expression->de-bruijn) t))
      #;(test 7 ((○ (value₊ E⁺) expression->de-bruijn) t)))
 
+    (test "((Load three) (Load ²) (Closure ((Closure ((Position 0) (Position 1) Apply (Position 1) Apply)))) Apply Apply)" 
+     ((○ to-string compile expression->de-bruijn) control))
+
+    (test `(81 ,'() ,'() ,(void))
+      (let₁ (s (last (→/compiled* s₁)))
+       (list
+        ((○ car status-S) s)
+        (status-E s)
+        (status-C s)
+        (status-D s))))
      #;(test 81
       ""
       (with-output-to-string (τ ((fmap F) (→/interpreted* (status-init E (list control)))))))
