@@ -102,7 +102,7 @@
     (test "((Load three) (Load ²) (Closure ((Closure ((Position 0) (Position 1) Apply (Position 1) Apply)))) Apply Apply)" 
      ((○ to-string compile expression->de-bruijn) control))
 
-    (test "((Load three) (Load ²) Enter (Closure ((Position 0) (Position 1) Apply (Position 1) Apply)) Exit Apply)" 
+    (test "((Load three) (Load ²) Enter (Closure ((Position 0) (Position&Apply 1) (Position&Apply 1))) Exit Apply)" 
      ((○ to-string compile⁺ expression->de-bruijn) control))
 
     (test `(81 ,'() ,'() ,(void))

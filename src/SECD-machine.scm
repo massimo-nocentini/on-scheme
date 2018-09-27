@@ -146,12 +146,13 @@
         (deB e '())))))
 
     (define-datatype instruction instruction?
-     (Load          (selector procedure?))
+     (Load (selector procedure?))
      (Apply)
-     (Position  (index number?))
+     (Position (index number?))
+     (Position&Apply  (index number?))
      (Closure   (control list?)) ; [instruction], precisely.
      (Enter)
-     (Exit)) 
+     (Exit))
 
     (define-record-printer instruction
      (lambda (i out)
@@ -161,6 +162,7 @@
        (Enter () (format out "Enter"))
        (Exit () (format out "Exit"))
        (Position (index) (format out "(Position ~a)" index))
+       (Position&Apply (index) (format out "(Position&Apply ~a)" index))
        (Closure (instructions) (format out "(Closure ~a)" instructions)))))
 
     (define compile
@@ -219,47 +221,53 @@
              (Id₋ (id) (list (Load ($ id))))
              (Id₊ (index) (list (Position index)))
              (Lambda₊ (body) (list (Closure (C body))))
-             (Comb₊ (rator rand) (cases de-bruijn rator 
+             (Comb₊ (rator rand) (cases de-bruijn rator
                                   (Lambda₊ (body) `(,@(C rand) ,(Enter) ,@(C body) ,(Exit)))
+                                  (Id₊ (index) `(,@(C rand) ,(Position&Apply index)))
                                   (else `(,@(C rand) ,@(C rator) ,(Apply))))))))
 
     (define →/compiled⁺
-     (lambda (E₀)
-      (dbind/status
-       (lambda (s S E C D)
-        (cond
-         ((and (null? C) (undefined? D)) s) ; termination condition for fixed-point
-         ((null? C)
-          (let₁ (extend-dump (dbind/status
-                              (lambda (_ S₁ E₁ C₁ D₁)
-                               (let₁ (S₂ (cons (car S) S₁))
-                                (make-status S₂ E₁ C₁ D₁)))))
-           (extend-dump D)))
-         (else (match₁ ((C₀ . C₊) C)
-                (cases instruction C₀
-                 (Load (selector) (let₁ (S₁ (cons (selector E₀) S))
-                                   (make-status S₁ E C₊ D)))
-                 (Position (index) (let₁ (S₁ (cons (list-ref E index) S))
+     (let ((PA (lambda (f y S E C D)
+                (cond/λ f
+                 (closure₊? (dbind/closure₊
+                             (lambda (_ C₁ E₁)
+                              (let ((S₂ '() )
+                                    (E₂ (cons y E₁))
+                                    (C₂ (identity C₁))
+                                    (D₂ (make-status S E C D)))
+                               (make-status S₂ E₂ C₂ D₂)))))
+                 (else (K (make-status (cons (f y) S) E C D)))))))
+      (lambda (E₀)
+       (dbind/status
+        (lambda (s S E C D)
+         (cond
+          ((and (null? C) (undefined? D)) s) ; termination condition for fixed-point
+          ((null? C)
+           (let₁ (extend-dump (dbind/status
+                               (lambda (_ S₁ E₁ C₁ D₁)
+                                (let₁ (S₂ (cons (car S) S₁))
+                                 (make-status S₂ E₁ C₁ D₁)))))
+            (extend-dump D)))
+          (else (match₁ ((C₀ . C₊) C)
+                 (cases instruction C₀
+                  (Load (selector) (let₁ (S₁ (cons (selector E₀) S))
                                     (make-status S₁ E C₊ D)))
-                 (Closure (instructions) (let₁ (c₊ (make-closure₊ instructions E))
-                                          (make-status (cons c₊ S) E C₊ D)))
-                 (Enter () (match₁ ((s₀ . S₊) S)
-                            (let₁ (D₁ (make-status S₊ (void) (void) D))
-                             (make-status '() (cons s₀ E) C₊ D₁))))
-                 (Exit () (let ((S₁ (cons (car S) (status-S D)))
-                                (E₁ (cdr E))
-                                (C₁ C₊)
-                                (D₁ (status-D D)))
-                           (make-status S₁ E₁ C₁ D₁)))
-                 (Apply () (match₁ ((f y . S₊) S)
-                            (cond/λ f
-                             (closure₊? (dbind/closure₊
-                                         (lambda (_ C₁ E₁)
-                                          (let ((S₂ '() )
-                                                (E₂ (cons y E₁))
-                                                (C₂ (identity C₁))
-                                                (D₂ (make-status S₊ E C₊ D)))
-                                           (make-status S₂ E₂ C₂ D₂)))))
-                             (else (K (make-status (cons (f y) S₊) E C₊ D))))))))))))))
+                  (Position (index) (let₁ (S₁ (cons (list-ref E index) S))
+                                     (make-status S₁ E C₊ D)))
+                  (Closure (instructions) (let₁ (c₊ (make-closure₊ instructions E))
+                                           (make-status (cons c₊ S) E C₊ D)))
+                  (Enter () (match₁ ((s₀ . S₊) S)
+                             (let₁ (D₁ (make-status S₊ '() '() D))
+                              (make-status '() (cons s₀ E) C₊ D₁))))
+                  (Exit () (let ((S₁ (cons (car S) (status-S D)))
+                                 (E₁ (cdr E))
+                                 (C₁ C₊)
+                                 (D₁ (status-D D)))
+                            (make-status S₁ E₁ C₁ D₁)))
+                  (Position&Apply (index) (let₁ (f (list-ref E index))
+                                           (match₁ ((y . S₊) S)
+                                            (PA f y S₊ E C₊ D))))
+                  (Apply () (match₁ ((f y . S₊) S)
+                             (PA f y S₊ E C₊ D))))))))))))
 
     )
