@@ -36,9 +36,10 @@
      (test 27 ((λ (x a b c) (((p (((curry₁ *) (² x)) a)) (((curry₁ *) x) b)) c)) 4 1 2 3)))
     (let₁ (E ((extend E₀)
               `(a . ,1) `(b . ,2) `(c . ,3) `(d . ,4) `(o . ,-24)
+              `(zero . 0) `(one . 1) `(two . 2)
               `(p . ,(lambda (x) (lambda (y) (lambda (z) (+ x y z)))))
               `(* . ,(lambda (x) (lambda (y) (* x y))))
-              `(² . ,²)))
+              `(² . ,²) `(null? . ,null?) `(pair? . ,pair?)))
      (test 27 ((value E) e))
 
      (test "((λ (x) (λ (y) (((p ((* (² x)) a)) ((* x) b)) y))) d)"
@@ -52,15 +53,56 @@
        ((○ to-string curryfy) e₁))
       (test 0 ((○ (value E) curryfy) e₁)))
 
+     (let₁ (e₂ '(cond
+                 ((null? l) zero)
+                 ((pair? l) one)
+                 (else two)))
+      (test "(if (null? l) zero (if (pair? l) one two))"
+       ((○ to-string curryfy) e₂))
+      (test 0 ((○ (value ((extend E) `(l . ,(list)))) curryfy) e₂))
+      (test 1 ((○ (value ((extend E) `(l . ,(list 1)))) curryfy) e₂))
+      (test 2 ((○ (value ((extend E) `(l . ,3))) curryfy) e₂)))
      ))
 
+    (define Y
+     (lambda (f)
+      (Φ (lambda (g) (f (lambda (x) ((g g) x)))))))
+
+    (test 3 ((Y (lambda (L)
+                 (lambda (l)
+                  (cond/λ l
+                   (null? (K 0))
+                   (else (○ add1 L cdr)))))) 
+             '(1 1 1)))
 
     (let* ((control (curryfy '((λ (f x) (f (f x))) ² three)))
            (control₁ (curryfy '((λ (f) (λ (x) (f (f x)))) ² three)))
-           (E ((extend E₀) `(² . ,²) `(three . 3)))
+           (control₂ (curryfy '((λ (f) (λ (x) (f (f x)))) (λ (x) (* x x)) three)))
+           (length₀ '(λ (L)
+                      (λ (l)
+                       (cond
+                        ((null? l) zero)
+                        (else (add1 (L (cdr l))))))))
+           (Y₀ (let₁ (h '(λ (g) (f (λ (x) ((g g) x)))))
+                `(λ (f) (,h ,h))))
+           (Y (curryfy `(,Y₀ ,length₀)))
+           (Y₁ (curryfy `((,Y₀ ,length₀) ones)))
+           (E ((extend E₀)
+               `(² . ,²)
+               `(three . 3)
+               `(* . ,*)
+               `(add1 . ,add1)
+               `(null? . ,null?)
+               `(cdr . ,cdr)
+               `(zero . 0)
+               `(ones . ,(list 1 1 1))
+               `(one . 1)))
            (s₀ (status-init E (list control)))
-           (s₁ (status-init '() ((○ compile expression->de-bruijn) control)))
-           (s₁⁺ (status-init '() ((○ compile⁺ expression->de-bruijn) control)))
+           (s₁ (status-init '() ((○ compile expression->de-bruijn) control₁)))
+           (s₁⁺ (status-init '() ((○ compile⁺ expression->de-bruijn) control₁)))
+           (s₂⁺ (status-init '() ((○ compile⁺ expression->de-bruijn) control₂)))
+           (Y⁺ (status-init '() ((○ compile⁺ expression->de-bruijn) Y)))
+           (Y₁⁺ (status-init '() ((○ compile⁺ expression->de-bruijn) Y₁)))
            (F (lambda (→)
                (lambda (s)
                 (format #t "~a\n" s)
@@ -99,11 +141,24 @@
      (test 7 ((○ (value₊ E) expression->de-bruijn) t))
      #;(test 7 ((○ (value₊ E⁺) expression->de-bruijn) t)))
 
-    (test "((Load three) (Load ²) (Closure ((Closure ((Position 0) (Position 1) Apply (Position 1) Apply)))) Apply Apply)" 
+    (test "((Load three) (Load ²) (Closure ((Closure ((Position 0) (Position 1) Apply (Position 1) Apply)))) Apply Apply)"
      ((○ to-string compile expression->de-bruijn) control))
 
-    (test "((Load three) (Load ²) Enter (Closure ((Position 0) (Position&Apply 1) (Position&Apply 1))) Exit Apply)" 
-     ((○ to-string compile⁺ expression->de-bruijn) control))
+    (test "((Load three) (Load ²) Enter (Closure ((Position 0) (Position&Apply 1) (Position&Apply 1))) Exit Apply)"
+     ((○ to-string compile⁺ expression->de-bruijn) control₁))
+
+    (test "((Load three) (Closure ((Position 0) (Position 0) (Load *) Apply Apply)) Enter (Closure ((Position 0) (Position&Apply 1) (Position&Apply 1))) Exit Apply)"
+     ((○ to-string compile⁺ expression->de-bruijn) control₂))
+
+    (test "(λ (f) ((λ (g) (f (λ (x) ((g g) x)))) (λ (g) (f (λ (x) ((g g) x))))))"
+     (to-string Y₀))
+
+    (test "(λ ((λ (1 (λ ((1 1) 0)))) (λ (1 (λ ((1 1) 0))))))"
+     ((○ to-string expression->de-bruijn curryfy) Y₀))
+
+    (test "((Closure ((Closure ((Closure ((Position 0) (Position 1) (Position&Apply 1) Apply)) (Position&Apply 1))) Enter (Closure ((Position 0) (Position 1) (Position&Apply 1) Apply)) (Position&Apply 1) Exit)))"
+     ((○ to-string compile⁺ expression->de-bruijn curryfy) Y₀))
+
 
     (test `(81 ,'() ,'() ,(void))
       (let₁ (s (last (→/compiled* s₁)))
@@ -129,21 +184,22 @@
         (status-C s)
         (status-D s))))
 
-     #;(test 81
-      ""
-      (with-output-to-string (τ ((fmap F) (→/interpreted* (status-init E (list control)))))))
+    (test "[((Position 0) (Load null?) Apply (Test ((Position 0) (Load cdr) Apply (Position&Apply 1) (Load add1) Apply)) (Load zero)) ([((Position 0) (Position 1) (Position&Apply 1) Apply) ([((Closure ((Position 0) (Position 1) (Position&Apply 1) Apply)) (Position&Apply 1)) ([((Closure ((Position 0) (Load null?) Apply (Test ((Position 0) (Load cdr) Apply (Position&Apply 1) (Load add1) Apply)) (Load zero)))) ()])] [((Closure ((Position 0) (Load null?) Apply (Test ((Position 0) (Load cdr) Apply (Position&Apply 1) (Load add1) Apply)) (Load zero)))) ()])])]" 
+     ((○ to-string car status-S last →/compiled⁺*) Y⁺))
 
-     #;(test
-      "(() ((Load 3) (Load 1) (Load #<procedure (f a216)>) Apply Apply (Load 3) (Load 2) (Load 1) (Load #<procedure (p a210)>) Apply Apply (Load #<procedure (m a213)>) Apply Apply (Load #<procedure (p a210)>) Apply Apply))\n((3) ((Load 1) (Load #<procedure (f a216)>) Apply Apply (Load 3) (Load 2) (Load 1) (Load #<procedure (p a210)>) Apply Apply (Load #<procedure (m a213)>) Apply Apply (Load #<procedure (p a210)>) Apply Apply))\n((1 3) ((Load #<procedure (f a216)>) Apply Apply (Load 3) (Load 2) (Load 1) (Load #<procedure (p a210)>) Apply Apply (Load #<procedure (m a213)>) Apply Apply (Load #<procedure (p a210)>) Apply Apply))\n((#<procedure (f a216)> 1 3) (Apply Apply (Load 3) (Load 2) (Load 1) (Load #<procedure (p a210)>) Apply Apply (Load #<procedure (m a213)>) Apply Apply (Load #<procedure (p a210)>) Apply Apply))\n((#<procedure (f_671 b217)> 3) (Apply (Load 3) (Load 2) (Load 1) (Load #<procedure (p a210)>) Apply Apply (Load #<procedure (m a213)>) Apply Apply (Load #<procedure (p a210)>) Apply Apply))\n((10) ((Load 3) (Load 2) (Load 1) (Load #<procedure (p a210)>) Apply Apply (Load #<procedure (m a213)>) Apply Apply (Load #<procedure (p a210)>) Apply Apply))\n((3 10) ((Load 2) (Load 1) (Load #<procedure (p a210)>) Apply Apply (Load #<procedure (m a213)>) Apply Apply (Load #<procedure (p a210)>) Apply Apply))\n((2 3 10) ((Load 1) (Load #<procedure (p a210)>) Apply Apply (Load #<procedure (m a213)>) Apply Apply (Load #<procedure (p a210)>) Apply Apply))\n((1 2 3 10) ((Load #<procedure (p a210)>) Apply Apply (Load #<procedure (m a213)>) Apply Apply (Load #<procedure (p a210)>) Apply Apply))\n((#<procedure (p a210)> 1 2 3 10) (Apply Apply (Load #<procedure (m a213)>) Apply Apply (Load #<procedure (p a210)>) Apply Apply))\n((#<procedure (f_657 b211)> 2 3 10) (Apply (Load #<procedure (m a213)>) Apply Apply (Load #<procedure (p a210)>) Apply Apply))\n((3 3 10) ((Load #<procedure (m a213)>) Apply Apply (Load #<procedure (p a210)>) Apply Apply))\n((#<procedure (m a213)> 3 3 10) (Apply Apply (Load #<procedure (p a210)>) Apply Apply))\n((#<procedure (f_664 b214)> 3 10) (Apply (Load #<procedure (p a210)>) Apply Apply))\n((0 10) ((Load #<procedure (p a210)>) Apply Apply))\n((#<procedure (p a210)> 0 10) (Apply Apply))\n((#<procedure (f_657 b211)> 10) (Apply))\n((10) ())\n"
-      (with-output-to-string (τ ((fmap F)
-                                 (→/compiled
-                                  (make-status '() ((compile E) control)))))))
+    (test `(3 ,'() ,'() ,(void))
+      (let* ((s₁ (status-init '() ((○ compile expression->de-bruijn) Y₁)))
+             (s (last (→/compiled* s₁))))
+       (list
+        ((○ car status-S) s)
+        (status-E s)
+        (status-C s)
+        (status-D s))))
 
-     #;(test
-      "(() (((p ((f a) c)) ((m c) ((p b) a)))))\n(() (((m c) ((p b) a)) (p ((f a) c)) apply0))\n(() (((p b) a) (m c) apply0 (p ((f a) c)) apply0))\n(() (a (p b) apply0 (m c) apply0 (p ((f a) c)) apply0))\n((1) ((p b) apply0 (m c) apply0 (p ((f a) c)) apply0))\n((1) (b p apply0 apply0 (m c) apply0 (p ((f a) c)) apply0))\n((2 1) (p apply0 apply0 (m c) apply0 (p ((f a) c)) apply0))\n((#<procedure (p a210)> 2 1) (apply0 apply0 (m c) apply0 (p ((f a) c)) apply0))\n((#<procedure (f_657 b211)> 1) (apply0 (m c) apply0 (p ((f a) c)) apply0))\n((3) ((m c) apply0 (p ((f a) c)) apply0))\n((3) (c m apply0 apply0 (p ((f a) c)) apply0))\n((3 3) (m apply0 apply0 (p ((f a) c)) apply0))\n((#<procedure (m a213)> 3 3) (apply0 apply0 (p ((f a) c)) apply0))\n((#<procedure (f_664 b214)> 3) (apply0 (p ((f a) c)) apply0))\n((0) ((p ((f a) c)) apply0))\n((0) (((f a) c) p apply0 apply0))\n((0) (c (f a) apply0 p apply0 apply0))\n((3 0) ((f a) apply0 p apply0 apply0))\n((3 0) (a f apply0 apply0 p apply0 apply0))\n((1 3 0) (f apply0 apply0 p apply0 apply0))\n((#<procedure (f a216)> 1 3 0) (apply0 apply0 p apply0 apply0))\n((#<procedure (f_671 b217)> 3 0) (apply0 p apply0 apply0))\n((10 0) (p apply0 apply0))\n((#<procedure (p a210)> 10 0) (apply0 apply0))\n((#<procedure (f_657 b211)> 0) (apply0))\n((10) ())\n"
-      (with-output-to-string (τ ((fmap F)
-                                 (→/interpreted
-                                  (make-status '() (list control₁))))))))
+    (test 3 ((○ car status-S last →/compiled⁺*) Y₁⁺))
+
+    )
+
 
 
 
