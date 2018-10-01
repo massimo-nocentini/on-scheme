@@ -3,7 +3,7 @@
 
  (import chicken scheme)
 
- (use srfi-1 srfi-69)
+ (use srfi-1 srfi-69 srfi-13)
  (use data-structures datatype extras matchable)
  (use commons)
 
@@ -60,10 +60,31 @@
 
     (define-record-printer status
      (lambda (s out)
-      (let₁ (P (dbind/status
-                (lambda (s S E C D)
-                 (format out "(~a ~a ~a ~a)" S (if (list? E) E (E->alist E)) C D))))
-       (P s))))
+      (format out "~a" ((status-printer 0) s))))
+
+    (define status-printer
+     (lambda (indent)
+      (dbind/status
+       (lambda (s S E C D)
+        (let* ((indents (make-string indent #\space))
+               (L (fmap (lambda (e)
+                         (string-append
+                          (make-string (+ indent 4) #\space)
+                          (to-string e)))))
+               (P (lambda (sym l #!key (indents indents)) 
+                   (match l
+                    (() (format #f "~a(~a ~a)" indents sym '()))
+                    ((l₀) (format #f "~a(~a (~a))" indents sym l₀))
+                    ((l₀ . l₊) (let₁ (rest (string-join (L l₊) "\n"))
+                                (format #f "~a(~a (~a\n~a))" indents sym l₀ rest))))))
+               (Ss (P "S" S indents: ""))
+               (Es (P "E" (if (list? E) E (E->alist E))))
+               (Cs (P "C" C))
+               (Ds (cond/λ D
+                    (undefined? (K (format #f "~a(D ~a)" indents D)))
+                    (else (K (format #f "~a(~a)"
+                              indents ((status-printer (add1 indent)) D)))))))
+         (format #f "~a\n~a\n~a\n~a" Ss Es Cs Ds))))))
 
     (define dbind/status
      (lambda (recv)
@@ -198,9 +219,28 @@
 
     (define-record-printer closure₊
      (lambda (c out)
-      (let₁ (P (dbind/closure₊ (lambda (_ C E)
-                               (format out "[~a ~a]" C E))))
-       (P c))))
+      (format out "[~a ~a]" (closure₊-C c) (closure₊-E c))))
+
+    (define closure₊-printer
+     (lambda (indent)
+      (dbind/closure₊
+       (lambda (_ C E)
+        (let* ((indents (make-string indent #\space))
+               (L (fmap (lambda (e)
+                         (string-append
+                          (make-string (+ indent 5) #\space)
+                          (to-string e)))))
+               (Es (match (if (list? E) E (E->alist E))
+                    (() (format #f "~a(E ~a)]" indents '()))
+                    ((e₀) (format #f "~a(E (~a))]" indents e₀))
+                    ((e₀ . E₊) (let₁ (rest (string-join (L E₊) "\n"))
+                                (format #f "~a(E (~a\n~a))]" indents e₀ rest)))))
+               (Cs (match C
+                    (() (format #f "~a[(C ~a)" indents C))
+                    ((c₀) (format #f "~a[(C (~a))" indents c₀))
+                    ((c₀ . C₊) (let₁ (rest (string-join (L C₊) "\n"))
+                                (format #f "~a[(C (~a\n~a))" indents c₀ rest))))))
+         (format #f "~a ~a" Cs Es))))))
 
     (define →/compiled
      (lambda (E₀)
