@@ -113,7 +113,7 @@
 
      (test-assert (equal? control control₁))
 
-     (test "(() () ((((λ (f) (λ (x) (f (f x)))) ²) three)) #<unspecified>)"
+     (test "(S ())\n(E ())\n(C ((((λ (f) (λ (x) (f (f x)))) ²) three)))\n(D #<unspecified>)"
       (to-string (status-init E (list control))))
 
      #;(test "" (to-string (→/interpreted* s₀)))
