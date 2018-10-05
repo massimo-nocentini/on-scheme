@@ -26,6 +26,10 @@
    ((letcc cont sexp more ...)
     (letcc (_ cont) sexp more ...))))
 
+    (define call/cc₊
+     (lambda (recv)
+      (continuation-capture (○ recv continuation->λ))))
+
  (define apply/cc
   (lambda (λ-sexp . args)
    (match args ; non-exhaustive matching to signal a mistake at call-time

@@ -5,14 +5,20 @@
 
  (use srfi-1 srfi-69 srfi-13)
  (use data-structures datatype extras matchable)
- (use commons)
+ (use commons continuations)
 
 
     (define-datatype expression expression?
      (Id        (identifier symbol?))
      (Lambda    (var symbol?) (body expression?))
      (Comb      (rator expression?) (rand expression?))
-     (If        (question expression?) (answer expression?) (otherwise expression?)))
+     (If        (question expression?) (answer expression?) (otherwise expression?))
+     (J         (body expression?)))
+
+    (define expression-J?
+     (lambda₁-cases expression
+      (J (_) #t)
+      (else #f)))
 
     (define-record-printer expression
      (lambda (e out)
@@ -20,13 +26,15 @@
        (Id      (id) (format out "~a" id))
        (Lambda  (var body) (format out "(λ (~a) ~a)" var body))
        (Comb    (rator rand) (format out "(~a ~a)" rator rand))
-       (If      (q a o) (format out "(if ~a ~a ~a)" q a o)))))
+       (If      (q a o) (format out "(if ~a ~a ~a)" q a o))
+       (J       (body) (format out "(J ~a)" body)))))
 
     (define curryfy
      (lambda (sexp)
       (cond
        ((symbol? sexp) (Id sexp))
        ((list? sexp) (match sexp
+                      (('J body) (J (curryfy body)))
                       (('cond (question answer) ('else otherwise))
                        (If (curryfy question) (curryfy answer) (curryfy otherwise)))
                       (('cond
@@ -44,13 +52,27 @@
 
     (define value
      (lambda (E)
-      (rec V (lambda₁-cases expression
-              (Id       (id) (E id))
-              (Lambda   (var body) (lambda (x)
-                                    (let₁ (V₊ (value ((extend E) `(,var . ,x))))
-                                     (V₊ body))))
-              (Comb     (rator rand) ((V rator) (V rand)))
-              (If       (q a o) (if (V q) (V a) (V o)))))))
+      (lambda (e)
+       (letrec ((V (lambda₁-cases expression
+                    (Id (id) (E id))
+                    (Lambda (var body) (lambda (x)
+                                          (let₁ (E₁ ((extend E) `(,var . ,x)))
+                                           ((value E₁) body))))
+                    (Comb (rator rand) (cond
+                                        ((expression-J? rand) 
+                                         (letcc skip 
+                                          ((V rator) ((V rand) skip))))
+                                        (else ((V rator) (V rand)))))
+                    (If (q a o) (if (V q) (V a) (V o)))
+                    (J (body) (lambda (skip)
+                               (cond/λ (V body)
+                                (procedure? (lambda (B)
+                                             (lambda (x)
+                                              (skip (B x)))))
+                                (else skip)))))))
+        (cond
+         ((expression-J? e) (call/cc₊ (V e)))
+         (else (V e)))))))
 
     (define-record status S E C D)
 
@@ -71,7 +93,7 @@
                          (string-append
                           (make-string (+ indent 4) #\space)
                           (to-string e)))))
-               (P (lambda (sym l #!key (indents indents)) 
+               (P (lambda (sym l #!key (indents indents))
                    (match l
                     (() (format #f "~a(~a ~a)" indents sym '()))
                     ((l₀) (format #f "~a(~a (~a))" indents sym l₀))

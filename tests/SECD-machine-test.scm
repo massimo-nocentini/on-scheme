@@ -36,8 +36,10 @@
      (test 27 ((λ (x a b c) (((p (((curry₁ *) (² x)) a)) (((curry₁ *) x) b)) c)) 4 1 2 3)))
     (let₁ (E ((extend E₀)
               `(a . ,1) `(b . ,2) `(c . ,3) `(d . ,4) `(o . ,-24)
-              `(zero . 0) `(one . 1) `(two . 2)
+              `(zero . 0) `(one . 1) `(two . 2) `(three . 3)
               `(p . ,(lambda (x) (lambda (y) (lambda (z) (+ x y z)))))
+              `(+ . ,(lambda (x) (lambda (y) (+ x y))))
+              `(- . ,(lambda (x) (lambda (y) (- x y))))
               `(* . ,(lambda (x) (lambda (y) (* x y))))
               `(² . ,²) `(null? . ,null?) `(pair? . ,pair?)))
      (test 27 ((value E) e))
@@ -62,11 +64,42 @@
       (test 0 ((○ (value ((extend E) `(l . ,(list)))) curryfy) e₂))
       (test 1 ((○ (value ((extend E) `(l . ,(list 1)))) curryfy) e₂))
       (test 2 ((○ (value ((extend E) `(l . ,3))) curryfy) e₂)))
+
+    (let₁ (J-term '(J three))
+     (test "(J three)" ((○ to-string curryfy) J-term))
+     (test 3 ((○ (value E) curryfy) J-term)))
+
+    (let₁ (J-term '((λ (L) (² two)) (J (λ (z) z))))
+     (test "((λ (L) (² two)) (J (λ (z) z)))" 
+      ((○ to-string curryfy) J-term))
+     (test 4 ((○ (value E) curryfy) J-term)))
+
+    (let₁ (J-term '((λ (L) (² (L two))) (J (λ (z) z))))
+     (test "((λ (L) (² (L two))) (J (λ (z) z)))" 
+      ((○ to-string curryfy) J-term))
+     (test 2 ((○ (value E) curryfy) J-term)))
+
+    (let₁ (J-term '((λ (x y) (+ ((λ (L) (² (L x))) 
+                                  (J (λ (z) (- (² z) (² two)))))
+                              y))
+                    three two))
+     (test "(((λ (x) (λ (y) ((+ ((λ (L) (² (L x))) (J (λ (z) ((- (² z)) (² two)))))) y))) three) two)" 
+      ((○ to-string curryfy) J-term))
+     (test 7 ((○ (value E) curryfy) J-term)))
+
+    (let₁ (J-term '((λ (x y L) (+ (² (L x)) y))
+                    three two (J (λ (z) (- (² z) (² two))))))
+     (test "((((λ (x) (λ (y) (λ (L) ((+ (² (L x))) y)))) three) two) (J (λ (z) ((- (² z)) (² two)))))" 
+      ((○ to-string curryfy) J-term))
+     (test 5 ((○ (value E) curryfy) J-term)))
+
+    (let₁ (J-term '((λ (L x y) (+ (² (L x)) y))
+                    (J (λ (z) (- (² z) (² two)))) three two))
+     (test-error ((○ (value E) curryfy) J-term)))
+
      ))
 
-    (define Y
-     (lambda (f)
-      (Φ (lambda (g) (f (lambda (x) ((g g) x)))))))
+(test-exit)
 
     (test 3 ((Y (lambda (L)
                  (lambda (l)

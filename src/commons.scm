@@ -366,4 +366,10 @@
        (lambda (s)
         (reverse! (→* s (list s)))))))
 
+    (define Y
+     (lambda (f)
+      (Φ (lambda (g) 
+          (f (lambda args 
+              (apply (g g) args)))))))
+
 )

@@ -1,7 +1,7 @@
 
 
 
-current4: commons SECD-machine deploy-shared-libs
+current4: commons continuations SECD-machine deploy-shared-libs
 	cd ../tests/ && make SECD-machine-test
 
 current5: commons SC-machine deploy-shared-libs
