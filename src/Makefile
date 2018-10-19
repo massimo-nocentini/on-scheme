@@ -1,5 +1,7 @@
 
 
+current2: commons streams unionfind microkanren reasoned-schemer deploy-shared-libs
+	cd ../tests/ && make microkanren-test
 
 current4: commons continuations SECD-machine deploy-shared-libs
 	cd ../tests/ && make SECD-machine-test
@@ -13,8 +15,6 @@ current: commons continuations deploy-shared-libs
 current3: commons streams series dice-of-doom deploy-shared-libs
 	cd ../tests/ && make dice-of-doom-test
 
-current2: commons streams unionfind microkanren reasoned-schemer deploy-shared-libs
-	cd ../tests/ && make microkanren-test
 
 current1: commons streams series deploy-shared-libs
 	cd ../tests/ && make streams-test
