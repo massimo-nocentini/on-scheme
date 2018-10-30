@@ -99,8 +99,6 @@
 
      ))
 
-(test-exit)
-
     (test 3 ((Y (lambda (L)
                  (lambda (l)
                   (cond/λ l
