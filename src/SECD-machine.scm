@@ -7,18 +7,13 @@
  (use data-structures datatype extras matchable)
  (use commons continuations)
 
-
     (define-datatype expression expression?
      (Id        (identifier symbol?))
      (Lambda    (var symbol?) (body expression?))
      (Comb      (rator expression?) (rand expression?))
      (If        (question expression?) (answer expression?) (otherwise expression?))
-     (J         (body expression?)))
-
-    (define expression-J?
-     (lambda₁-cases expression
-      (J (_) #t)
-      (else #f)))
+     (J)
+    )
 
     (define-record-printer expression
      (lambda (e out)
@@ -27,28 +22,34 @@
        (Lambda  (var body) (format out "(λ (~a) ~a)" var body))
        (Comb    (rator rand) (format out "(~a ~a)" rator rand))
        (If      (q a o) (format out "(if ~a ~a ~a)" q a o))
-       (J       (body) (format out "(J ~a)" body)))))
+       (J       () (format out "J")))))
 
     (define curryfy
      (lambda (sexp)
-      (cond
-       ((symbol? sexp) (Id sexp))
-       ((list? sexp) (match sexp
-                      (('J body) (J (curryfy body)))
-                      (('cond (question answer) ('else otherwise))
-                       (If (curryfy question) (curryfy answer) (curryfy otherwise)))
-                      (('cond
-                        (question answer)
-                        clauses ...)
-                       (If (curryfy question) (curryfy answer) (curryfy `(cond ,@clauses))))
-                      (('λ (x) body) (Lambda x (curryfy body)))
-                      (('λ (x y ...) body) (Lambda x (curryfy `(λ (,@y) ,body))))
-                      ((rator rand) (Comb (curryfy rator) (curryfy rand)))
-                      ((rator rand ... rand₊) (Comb
-                                                (curryfy `(,rator ,@rand))
-                                                (curryfy rand₊)))
-                      (else (error "match error for" sexp))))
-       (else (error "cond error for:" sexp)))))
+      (let ((is-Y? (=to? 'Y))
+            (is-J? (=to? 'J)))
+       (cond
+        ((is-J? sexp) (J))
+        ((is-Y? sexp) (let* ((f (gensym))
+                             (h `(λ (g) (,f (λ (x) ((g g) x)))))
+                             (Y `(λ (,f) (,h ,h))))
+                       (curryfy Y)))
+        ((symbol? sexp) (Id sexp))
+        ((list? sexp) (match sexp
+                       (('cond (question answer) ('else otherwise))
+                        (If (curryfy question) (curryfy answer) (curryfy otherwise)))
+                       (('cond
+                         (question answer)
+                         clauses ...)
+                        (If (curryfy question) (curryfy answer) (curryfy `(cond ,@clauses))))
+                       (('λ (x) body) (Lambda x (curryfy body)))
+                       (('λ (x y ...) body) (Lambda x (curryfy `(λ (,@y) ,body))))
+                       ((rator rand) (Comb (curryfy rator) (curryfy rand)))
+                       ((rator rand ... rand₊) (Comb
+                                                 (curryfy `(,rator ,@rand))
+                                                 (curryfy rand₊)))
+                       (else (error "match error for" sexp))))
+        (else (error "cond error for:" sexp))))))
 
     (define value
      (lambda (E)
@@ -56,23 +57,12 @@
        (letrec ((V (lambda₁-cases expression
                     (Id (id) (E id))
                     (Lambda (var body) (lambda (x)
-                                          (let₁ (E₁ ((extend E) `(,var . ,x)))
-                                           ((value E₁) body))))
-                    (Comb (rator rand) (cond
-                                        ((expression-J? rand) 
-                                         (letcc skip 
-                                          ((V rator) ((V rand) skip))))
-                                        (else ((V rator) (V rand)))))
+                                        (let₁ (E₁ ((extend E) `(,var . ,x)))
+                                         ((value E₁) body))))
+                    (Comb (rator rand) ((V rator) (V rand)))
                     (If (q a o) (if (V q) (V a) (V o)))
-                    (J (body) (lambda (skip)
-                               (cond/λ (V body)
-                                (procedure? (lambda (B)
-                                             (lambda (x)
-                                              (skip (B x)))))
-                                (else skip)))))))
-        (cond
-         ((expression-J? e) (call/cc₊ (V e)))
-         (else (V e)))))))
+                    (J () (error "((value E) J) not implemented")))))
+        (V e)))))
 
     (define-record status S E C D)
 
@@ -165,7 +155,9 @@
      (Id₊       (index number?))
      (Lambda₊   (body de-bruijn?))
      (Comb₊     (rator de-bruijn?) (rand de-bruijn?))
-     (If₊       (question de-bruijn?) (answer de-bruijn?) (otherwise de-bruijn?)))
+     (If₊       (question de-bruijn?) (answer de-bruijn?) (otherwise de-bruijn?))
+     (J₊)
+    )
 
     (define-record-printer de-bruijn
      (lambda (e out)
@@ -174,7 +166,8 @@
        (Id₊     (index) (format out "~a" index))
        (Lambda₊ (body) (format out "(λ ~a)" body))
        (Comb₊   (rator rand) (format out "(~a ~a)" rator rand))
-       (If₊     (q a o) (format out "(if ~a ~a ~a)" q a o)))))
+       (If₊     (q a o) (format out "(if ~a ~a ~a)" q a o))
+       (J₊      () (format out "J")))))
 
     (define expression->de-bruijn
      (lambda (e)
@@ -186,7 +179,8 @@
                                              (else      (K (Id₋ i)))))
                        (Lambda (var body)   (Lambda₊ (deB body (cons var F))))
                        (Comb (rator rand)   (Comb₊ (deB rator F) (deB rand F)))
-                       (If  (q a o)         (If₊ (deB q F) (deB a F) (deB o F))))))))
+                       (If  (q a o)         (If₊ (deB q F) (deB a F) (deB o F)))
+                       (J ()                (J₊)))))))
        (deB e '()))))
 
     (define value₊
@@ -198,7 +192,8 @@
                        (Id₊ (index) (list-ref F index))
                        (Lambda₊ (body) (lambda (y) (deB body (cons y F))))
                        (Comb₊ (rator rand) ((deB rator F) (deB rand F)))
-                       (If₊ (q a o) (if (deB q F) (deB a F) (deB o F)))))))
+                       (If₊ (q a o) (if (deB q F) (deB a F) (deB o F)))
+                       (J₊ () (error "((value₊ E) J) not implemented"))))))
         (deB e '())))))
 
     (define-datatype instruction instruction?
@@ -210,6 +205,7 @@
      (Enter)
      (Exit)
      (Test (control list?)) ; [instruction], precisely.
+     (Jump)
     )
 
     (define-record-printer instruction
@@ -222,7 +218,8 @@
        (Test (instructions) (format out "(Test ~a)" instructions))
        (Position (index) (format out "(Position ~a)" index))
        (Position&Apply (index) (format out "(Position&Apply ~a)" index))
-       (Closure (instructions) (format out "(Closure ~a)" instructions)))))
+       (Closure (instructions) (format out "(Closure ~a)" instructions))
+       (Jump () (format out "Jump")))))
 
     (define compile
      (rec C (lambda₁-cases de-bruijn
@@ -230,7 +227,8 @@
              (Id₊ (index) (list (Position index)))
              (Lambda₊ (body) (list (Closure (C body))))
              (Comb₊ (rator rand) `(,@(C rand) ,@(C rator) ,(Apply)))
-             (If₊ (q a o) `(,@(C q) ,(Test (C o)) ,@(C a))))))
+             (If₊ (q a o) `(,@(C q) ,(Test (C o)) ,@(C a)))
+             (J₊ () (list (Jump))))))
 
     (define-record closure₊ C E)
 
@@ -243,7 +241,18 @@
      (lambda (c out)
       (format out "[~a ~a]" (closure₊-C c) (closure₊-E c))))
 
-    (define closure₊-printer
+    (define-record program-closure body D)
+
+    (define dbind/program-closure
+     (lambda (recv)
+      (lambda (pc)
+       (recv pc (program-closure-body pc) (program-closure-D pc)))))
+
+    (define-record-printer program-closure
+     (lambda (pc out)
+      (format out "<[~a ~a]>" (program-closure-body pc) (program-closure-D pc))))
+
+    #;(define closure₊-printer
      (lambda (indent)
       (dbind/closure₊
        (lambda (_ C E)
@@ -308,18 +317,48 @@
                                   (Lambda₊ (body) `(,@(C rand) ,(Enter) ,@(C body) ,(Exit)))
                                   (Id₊ (index) `(,@(C rand) ,(Position&Apply index)))
                                   (else `(,@(C rand) ,@(C rator) ,(Apply)))))
-             (If₊ (q a o) `(,@(C q) ,(Test (C o)) ,@(C a))))))
+             (If₊ (q a o) `(,@(C q) ,(Test (C o)) ,@(C a)))
+             (J₊ () (list (Jump))))))
+
+    (define-record status-appender status)
+
+    (define dbind/status-appender
+     (lambda (recv)
+      (lambda (sa)
+       (recv sa (status-appender-status sa)))))
+
+    (define-record-printer status-appender
+     (lambda (sa out)
+      (format out "<|~a|>" (status-appender-status sa))))
 
     (define →/compiled⁺
      (let ((PA (lambda (f y S E C D)
                 (cond/λ f
                  (closure₊? (dbind/closure₊
                              (lambda (_ C₁ E₁)
-                              (let ((S₂ '() )
+                              (let ((S₂ '())
                                     (E₂ (cons y E₁))
                                     (C₂ (identity C₁))
                                     (D₂ (make-status S E C D)))
                                (make-status S₂ E₂ C₂ D₂)))))
+                 (program-closure? (dbind/program-closure
+                                    (lambda (_ body D₀)
+                                     (cond/λ D₀
+                                      (undefined? (K (let ((S₁ `(,body ,y . ,S))
+                                                           (C₁ (cons (Apply) '())))
+                                                      (make-status S₁ E C₁ D))))
+                                      (status? (dbind/status
+                                                (lambda (_ S₁ E₁ C₁ D₁)
+                                                 (let ((S₂ `(,body ,y . ,S₁))
+                                                       (E₂ (identity E₁))
+                                                       (C₂ (cons (Apply) C₁))
+                                                       (D₂ (identity D₁)))
+                                                  (make-status S₂ E₂ C₂ D₂)))))
+                                      (else error)))))
+                 (status-appender? (dbind/status-appender
+                                    (lambda (_ D₀)
+                                     (let₁ (pc (make-program-closure y D₀))
+                                      (make-status (cons pc S) E C D)))))
                  (else (K (make-status (cons (f y) S) E C D)))))))
       (lambda (E₀)
        (dbind/status
@@ -356,6 +395,8 @@
                                            (match₁ ((y . S₊) S)
                                             (PA f y S₊ E C₊ D))))
                   (Apply () (match₁ ((f y . S₊) S)
-                             (PA f y S₊ E C₊ D))))))))))))
+                             (PA f y S₊ E C₊ D)))
+                  (Jump () (let₁ (S₁ (cons (make-status-appender D) S))
+                            (make-status S₁ E C₊ D))))))))))))
 
     )

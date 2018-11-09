@@ -65,37 +65,6 @@
       (test 1 ((○ (value ((extend E) `(l . ,(list 1)))) curryfy) e₂))
       (test 2 ((○ (value ((extend E) `(l . ,3))) curryfy) e₂)))
 
-    (let₁ (J-term '(J three))
-     (test "(J three)" ((○ to-string curryfy) J-term))
-     (test 3 ((○ (value E) curryfy) J-term)))
-
-    (let₁ (J-term '((λ (L) (² two)) (J (λ (z) z))))
-     (test "((λ (L) (² two)) (J (λ (z) z)))" 
-      ((○ to-string curryfy) J-term))
-     (test 4 ((○ (value E) curryfy) J-term)))
-
-    (let₁ (J-term '((λ (L) (² (L two))) (J (λ (z) z))))
-     (test "((λ (L) (² (L two))) (J (λ (z) z)))" 
-      ((○ to-string curryfy) J-term))
-     (test 2 ((○ (value E) curryfy) J-term)))
-
-    (let₁ (J-term '((λ (x y) (+ ((λ (L) (² (L x))) 
-                                  (J (λ (z) (- (² z) (² two)))))
-                              y))
-                    three two))
-     (test "(((λ (x) (λ (y) ((+ ((λ (L) (² (L x))) (J (λ (z) ((- (² z)) (² two)))))) y))) three) two)" 
-      ((○ to-string curryfy) J-term))
-     (test 7 ((○ (value E) curryfy) J-term)))
-
-    (let₁ (J-term '((λ (x y L) (+ (² (L x)) y))
-                    three two (J (λ (z) (- (² z) (² two))))))
-     (test "((((λ (x) (λ (y) (λ (L) ((+ (² (L x))) y)))) three) two) (J (λ (z) ((- (² z)) (² two)))))" 
-      ((○ to-string curryfy) J-term))
-     (test 5 ((○ (value E) curryfy) J-term)))
-
-    (let₁ (J-term '((λ (L x y) (+ (² (L x)) y))
-                    (J (λ (z) (- (² z) (² two)))) three two))
-     (test-error ((○ (value E) curryfy) J-term)))
 
      ))
 
@@ -116,11 +85,14 @@
                         (else (add1 (L (cdr l))))))))
            (Y₀ (let₁ (h '(λ (g) (f (λ (x) ((g g) x)))))
                 `(λ (f) (,h ,h))))
-           (Y (curryfy `(,Y₀ ,length₀)))
-           (Y₁ (curryfy `((,Y₀ ,length₀) ones)))
+           (Y (curryfy `(Y ,length₀)))
+           (Y₁ (curryfy `((Y ,length₀) ones)))
            (E ((extend E₀)
                `(² . ,²)
+               `(+ . ,(lambda (x) (lambda (y) (+ x y))))
+               `(- . ,(lambda (x) (lambda (y) (- x y))))
                `(three . 3)
+               `(two . 2)
                `(* . ,*)
                `(add1 . ,add1)
                `(null? . ,null?)
@@ -185,10 +157,10 @@
      (to-string Y₀))
 
     (test "(λ ((λ (1 (λ ((1 1) 0)))) (λ (1 (λ ((1 1) 0))))))"
-     ((○ to-string expression->de-bruijn curryfy) Y₀))
+     ((○ to-string expression->de-bruijn curryfy) 'Y))
 
     (test "((Closure ((Closure ((Closure ((Position 0) (Position 1) (Position&Apply 1) Apply)) (Position&Apply 1))) Enter (Closure ((Position 0) (Position 1) (Position&Apply 1) Apply)) (Position&Apply 1) Exit)))"
-     ((○ to-string compile⁺ expression->de-bruijn curryfy) Y₀))
+     ((○ to-string compile⁺ expression->de-bruijn curryfy) 'Y))
 
 
     (test `(81 ,'() ,'() ,(void))
@@ -228,6 +200,49 @@
         (status-D s))))
 
     (test 3 ((○ car status-S last →/compiled⁺*) Y₁⁺))
+
+    (let₁ (J-term '(J three))
+     (test "(J three)" ((○ to-string curryfy) J-term))
+     (test-error ((○ (value E) curryfy) J-term))
+     (test "<[3 #<unspecified>]>" 
+      (let₁ (t ((○ compile⁺ expression->de-bruijn curryfy) J-term))
+       ((○ to-string car status-S last →/compiled⁺*) (status-init '() t)))))
+
+    (let₁ (J-term '((λ (L) (² two)) (J (λ (z) z))))
+     (test "((λ (L) (² two)) (J (λ (z) z)))" 
+      ((○ to-string curryfy) J-term))
+     (test-error ((○ (value E) curryfy) J-term))
+     (test 4 (let₁ (t ((○ compile⁺ expression->de-bruijn curryfy) J-term))
+              ((○ car status-S last →/compiled⁺*) (status-init '() t)))))
+
+    (let₁ (J-term '((λ (L) (² (L two))) (J (λ (z) z))))
+     (test "((λ (L) (² (L two))) (J (λ (z) z)))" 
+      ((○ to-string curryfy) J-term))
+     (test-error ((○ (value E) curryfy) J-term))
+     (test 2 (let₁ (t ((○ compile⁺ expression->de-bruijn curryfy) J-term))
+              ((○ car status-S last →/compiled⁺*) (status-init '() t)))))
+
+    (let₁ (J-term '((λ (x y) (+ ((λ (L) (² (L x))) 
+                                  (J (λ (z) (- (² z) (² two)))))
+                              y))
+                    three two))
+     (test "(((λ (x) (λ (y) ((+ ((λ (L) (² (L x))) (J (λ (z) ((- (² z)) (² two)))))) y))) three) two)" 
+      ((○ to-string curryfy) J-term))
+     (test-error ((○ (value E) curryfy) J-term))
+     (test 7 (let₁ (t ((○ compile⁺ expression->de-bruijn curryfy) J-term))
+              ((○ car status-S last →/compiled⁺*) (status-init '() t)))))
+
+    (let₁ (J-term '((λ (x y L) (+ (² (L x)) y))
+                    three two (J (λ (z) (- (² z) (² two))))))
+     (test "((((λ (x) (λ (y) (λ (L) ((+ (² (L x))) y)))) three) two) (J (λ (z) ((- (² z)) (² two)))))" 
+      ((○ to-string curryfy) J-term))
+     (test-error ((○ (value E) curryfy) J-term))
+     (test 5 (let₁ (t ((○ compile⁺ expression->de-bruijn curryfy) J-term))
+              ((○ car status-S last →/compiled⁺*) (status-init '() t)))))
+
+    (let₁ (J-term '((λ (L x y) (+ (² (L x)) y))
+                    (J (λ (z) (- (² z) (² two)))) three two))
+     (test-error ((○ (value E) curryfy) J-term)))
 
     )
 

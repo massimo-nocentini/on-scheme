@@ -1,10 +1,11 @@
 
 
+current4: commons continuations SECD-machine deploy-shared-libs
+	cd ../tests/ && make SECD-machine-test
+
 current2: commons streams unionfind microkanren reasoned-schemer deploy-shared-libs
 	cd ../tests/ && make microkanren-test
 
-current4: commons continuations SECD-machine deploy-shared-libs
-	cd ../tests/ && make SECD-machine-test
 
 current5: commons SC-machine deploy-shared-libs
 	cd ../tests/ && make SC-machine-test
