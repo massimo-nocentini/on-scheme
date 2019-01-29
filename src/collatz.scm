@@ -4,11 +4,8 @@
 
 (module collatz *
 
- (import chicken scheme)
-
- (use data-structures)
-
- (use commons continuations)
+ (import scheme (chicken base))
+ (import commons continuations)
 
  (define collatz
   (lambda (x)

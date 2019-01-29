@@ -1,17 +1,16 @@
 
 
- (import chicken scheme)
- (use datatype data-structures srfi-69 test ports)
-
- (use commons promise) ; for my own `use`s
+ (import scheme (chicken base) (chicken port))
+ (import datatype srfi-69 test)
+ (import commons promise) ; for my own `use`s
 
  (test-group "subscripting symbols and variables introduction via `fresh`"
 
   (test 'g₁₂₃ (symbol∼subscripts 'g123))
-  (test "g₀" (with-output-to-string (lambda () (fresh₁ display)))) ; a very short hand for `(fresh1 (lambda (v) (display v)))`
   (test "g₁" (with-output-to-string (lambda () (fresh₁ display)))) ; a very short hand for `(fresh1 (lambda (v) (display v)))`
+  (test "g₂" (with-output-to-string (lambda () (fresh₁ display)))) ; a very short hand for `(fresh1 (lambda (v) (display v)))`
 
-  (test "(g₂ g₃ g₄)" (with-output-to-string (lambda () (fresh (v w z) (display (list v w z)))))) ; a very short hand for `(fresh1 (lambda (v) (display v)))`
+  (test "(g₃ g₄ g₅)" (with-output-to-string (lambda () (fresh (v w z) (display (list v w z)))))) ; a very short hand for `(fresh1 (lambda (v) (display v)))`
 
   (let ((one (V (gensym)))
         (two (V 'hello))

@@ -1,10 +1,9 @@
 
 
-(import chicken scheme)
-
-    (use numbers test)
-
-    (use commons SECD-machine)
+    (import scheme (chicken base) (chicken format))
+    (import srfi-1)
+    (import test)
+(import commons SECD-machine)
 
     (let* ((v 'x)
            (e (Comb

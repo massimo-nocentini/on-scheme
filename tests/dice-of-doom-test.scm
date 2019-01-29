@@ -1,10 +1,8 @@
 
-(import chicken scheme)
-
-(use srfi-1 srfi-13)
-(use test numbers)
-
-(use commons streams dice-of-doom)
+(import scheme (chicken base))
+(import srfi-1 srfi-13)
+(import test)
+(import commons streams dice-of-doom)
 
 (randomize 1024)
 

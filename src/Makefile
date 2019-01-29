@@ -72,7 +72,8 @@ SECD-machine:
 	csc -dynamic SECD-machine.scm -J
 	csc -dynamic SECD-machine.import.scm -J
 
-all: clean commons promise continuations collatz seasoned-schemer unionfind streams series microkanren reasoned-schemer dice-of-doom SC-machine SECD-machine
+#all: clean commons promise continuations collatz seasoned-schemer unionfind streams series microkanren reasoned-schemer dice-of-doom SC-machine SECD-machine
+all: clean commons promise continuations collatz seasoned-schemer unionfind streams series microkanren reasoned-schemer SC-machine SECD-machine
 	# pass
 
 deploy-shared-libs:

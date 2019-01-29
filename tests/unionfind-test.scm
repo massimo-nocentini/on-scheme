@@ -1,11 +1,8 @@
 
-(import chicken scheme)
-
-(use srfi-69)
-
-(use test ports)
-
-(use commons unionfind)
+(import scheme (chicken base) (chicken port))
+(import srfi-69)
+(import test)
+(import commons unionfind)
 
 
     (unionfind-new

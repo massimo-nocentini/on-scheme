@@ -1,11 +1,10 @@
 
 (module microkanren *
 
- (import chicken scheme)
-
- (use datatype data-structures srfi-69 ports)
-
- (use commons streams unionfind)
+ (import scheme (chicken base))
+ (import scheme (chicken port))
+ (import datatype srfi-69)
+ (import commons streams unionfind)
 
  (define-record status ≡ depth)
 
@@ -84,7 +83,7 @@
 
  (define R/unionfind-size
   (lambda (U)
-   (R '▢ (unionfind-#edges U))))
+   (R '▢ (unionfind-edges U))))
 
  (define reify/status
   (lambda (v s)

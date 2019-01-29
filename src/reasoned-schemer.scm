@@ -1,14 +1,12 @@
 
 (module reasoned-schemer *
 
- (import chicken scheme)
+ (import scheme (chicken base))
 
- (use streams microkanren)
-
- (use commons)
+ (import commons streams microkanren)
 
  (define nullº
-  (lambda (l)
+  (λ (l)
    (≡ l '())))
 
  (define consº

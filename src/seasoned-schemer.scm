@@ -3,11 +3,10 @@
 
 (module seasoned-schemer *
 
- (import chicken scheme)
-
- (use srfi-1)
- (use matchable data-structures)
- (use commons continuations)
+ (import scheme (chicken base))
+ (import srfi-1)
+ (import matchable)
+ (import commons continuations)
 
  (define multi-insert*&co
   (lambda (new old_l old_r sexp coll)

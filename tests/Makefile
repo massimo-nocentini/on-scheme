@@ -15,7 +15,7 @@ continuations-test:
 	./executables/continuations-test
 
 learning-test:
-	csc -X numbers-syntax learning-test.scm
+	csc learning-test.scm
 	mv learning-test executables/
 	./executables/learning-test
 
@@ -35,12 +35,12 @@ unionfind-test:
 	./executables/unionfind-test
 
 streams-test:
-	csc -X numbers-syntax streams-test.scm # according to http://wiki.call-cc.org/eggref/4/numbers#compiled-code
+	csc streams-test.scm
 	mv streams-test executables/
 	./executables/streams-test
 
 microkanren-test:
-	csc -X numbers-syntax microkanren-test.scm # according to http://wiki.call-cc.org/eggref/4/numbers#compiled-code
+	csc microkanren-test.scm
 	mv microkanren-test executables/
 	./executables/microkanren-test
 
@@ -59,4 +59,5 @@ SECD-machine-test:
 	mv SECD-machine-test executables/
 	./executables/SECD-machine-test
 
-run-tests: promise-test collatz-test continuations-test learning-test ackermann-test seasoned-schemer-test unionfind-test streams-test microkanren-test dice-of-doom-test SC-machine-test SECD-machine-test
+#run-tests: promise-test collatz-test continuations-test learning-test ackermann-test seasoned-schemer-test unionfind-test streams-test microkanren-test dice-of-doom-test SC-machine-test SECD-machine-test
+run-tests: promise-test collatz-test continuations-test learning-test ackermann-test seasoned-schemer-test unionfind-test streams-test microkanren-test SC-machine-test SECD-machine-test

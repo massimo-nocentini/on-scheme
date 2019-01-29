@@ -1,10 +1,10 @@
 
 (module promise *
 
- (import chicken scheme)
+ (import scheme (chicken base) (chicken port))
 
-  (use datatype data-structures srfi-69 test ports)
-  (use commons)
+  (import datatype srfi-69 test)
+  (import commons)
 
 
     (define-datatype variable (V (s symbol?)))

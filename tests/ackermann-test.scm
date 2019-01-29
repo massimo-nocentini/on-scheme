@@ -1,9 +1,7 @@
 
-(import chicken scheme)
-
-(use matchable test)
-
-(use continuations)
+(import scheme (chicken base))
+(import matchable test)
+(import continuations)
 
 ; implementation of a macro for the original Ackermann function φ, 
 ; taken from https://en.wikipedia.org/wiki/Ackermann_function

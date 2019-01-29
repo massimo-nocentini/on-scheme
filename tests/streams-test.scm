@@ -1,12 +1,11 @@
 
 
 
-(import chicken scheme)
+(import scheme (chicken base))
 
-(use srfi-1 srfi-13)
-(use test numbers)
-
-(use commons streams series)
+(import srfi-1 srfi-13)
+(import test)
+(import commons streams series)
 
     (test '(a b c d) ((compose stream:->list list->stream) '(a b c d))) ; therefore `identity`
 

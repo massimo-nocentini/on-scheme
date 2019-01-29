@@ -1,13 +1,9 @@
 
 (module series *
 
- (import chicken scheme)
-
- (use numbers data-structures)
-
- ;(import (prefix streams streams))
-
- (use commons streams)
+ (import scheme (chicken base))
+ (import (chicken random))
+ (import commons streams)
 
  (define series:0 (stream:repeat 0))
 
@@ -215,7 +211,7 @@
        ((stream:filter F) (fast-enumeration nats nats nats)))))
 
     (define random-numbers
-     (let ((rand-update (lambda (u) (random 1000))))
+     (let ((rand-update (lambda (u) (pseudo-random-integer 1000))))
       (lambda (init)
        (letdelay ((R (stream:cons init ((stream:map rand-update) R))))
         R))))

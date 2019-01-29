@@ -1,12 +1,10 @@
 
-
 (module commons *
 
- (import chicken scheme)
-
- (use srfi-1 srfi-69) ; `use` only for `srfi`s
- (use datatype matchable)
- (use numbers data-structures ports test lolevel extras)
+ (import scheme (chicken base))
+ (import chicken.condition chicken.port chicken.sort chicken.memory.representation)
+ (import srfi-1 srfi-69) ; `use` only for `srfi`s
+ (import datatype matchable test)
 
  (define-syntax λ ; "little-lambda", or "lambda the ultimate", the usual functional abstraction
   (syntax-rules ()

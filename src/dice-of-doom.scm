@@ -1,11 +1,10 @@
 
 (module dice-of-doom *
 
- (import chicken scheme)
-
- (use srfi-1)
- (use numbers extras loop data-structures)
- (use commons streams series)
+ (import scheme (chicken base))
+ (import srfi-1)
+ (import loop)
+ (import commons streams series)
 
 #;(defparameter *num-players* 2)
 #;(defparameter *max-dice* 3)

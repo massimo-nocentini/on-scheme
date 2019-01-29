@@ -1,68 +1,70 @@
 
 (module SECD-machine *
 
- (import chicken scheme)
+ (import scheme (chicken base) (chicken format))
+ (import srfi-1 srfi-69 srfi-13)
+ (import datatype matchable)
+ (import commons continuations)
 
- (use srfi-1 srfi-69 srfi-13)
- (use data-structures datatype extras matchable)
- (use commons continuations)
+ (define-datatype expression expression?
+   (Id        (identifier symbol?))
+   (Lambda    (var symbol?) (body expression?))
+   (Comb      (rator expression?) (rand expression?))
+   (If        (question expression?) (answer expression?) (otherwise expression?))
+   (J))
 
-    (define-datatype expression expression?
-     (Id        (identifier symbol?))
-     (Lambda    (var symbol?) (body expression?))
-     (Comb      (rator expression?) (rand expression?))
-     (If        (question expression?) (answer expression?) (otherwise expression?))
-     (J)
-    )
+ (define-record-printer expression
+   (lambda (e out)
+     (cases expression e
+	    (Id      (id) (format out "~a" id))
+	    (Lambda  (var body) (format out "(λ (~a) ~a)" var body))
+	    (Comb    (rator rand) (format out "(~a ~a)" rator rand))
+	    (If      (q a o) (format out "(if ~a ~a ~a)" q a o))
+	    (J       () (format out "J")))))
 
-    (define-record-printer expression
-     (lambda (e out)
-      (cases expression e
-       (Id      (id) (format out "~a" id))
-       (Lambda  (var body) (format out "(λ (~a) ~a)" var body))
-       (Comb    (rator rand) (format out "(~a ~a)" rator rand))
-       (If      (q a o) (format out "(if ~a ~a ~a)" q a o))
-       (J       () (format out "J")))))
-
-    (define curryfy
-     (lambda (sexp)
-      (let ((is-Y? (=to? 'Y))
-            (is-J? (=to? 'J)))
+ (define curryfy
+   (lambda (sexp)
+     (let ((is-Y? (=to? 'Y))
+           (is-J? (=to? 'J)))
        (cond
         ((is-J? sexp) (J))
         ((is-Y? sexp) (let* ((f (gensym))
                              (h `(λ (g) (,f (λ (x) ((g g) x)))))
                              (Y `(λ (,f) (,h ,h))))
-                       (curryfy Y)))
+			(curryfy Y)))
         ((symbol? sexp) (Id sexp))
         ((list? sexp) (match sexp
-                       (('cond (question answer) ('else otherwise))
-                        (If (curryfy question) (curryfy answer) (curryfy otherwise)))
-                       (('cond
-                         (question answer)
-                         clauses ...)
-                        (If (curryfy question) (curryfy answer) (curryfy `(cond ,@clauses))))
-                       (('λ (x) body) (Lambda x (curryfy body)))
-                       (('λ (x y ...) body) (Lambda x (curryfy `(λ (,@y) ,body))))
-                       ((rator rand) (Comb (curryfy rator) (curryfy rand)))
-                       ((rator rand ... rand₊) (Comb
-                                                 (curryfy `(,rator ,@rand))
-                                                 (curryfy rand₊)))
-                       (else (error "match error for" sexp))))
+			     (('cond (question answer) ('else otherwise))
+                              (If (curryfy question)
+				  (curryfy answer)
+				  (curryfy otherwise)))
+			     (('cond
+                               (question answer)
+                               clauses ...)
+                              (If (curryfy question)
+				  (curryfy answer)
+				  (curryfy `(cond ,@clauses))))
+			     (('λ (x) body) (Lambda x (curryfy body)))
+			     (('λ (x y ...) body) (Lambda x (curryfy `(λ ,y ,body))))
+			     ((rator rand) (Comb (curryfy rator) (curryfy rand)))
+			     ((rator rand ... rand₊) (Comb
+                                                      (curryfy `(,rator ,@rand))
+                                                      (curryfy rand₊)))
+			     (else (error "match error for" sexp))))
         (else (error "cond error for:" sexp))))))
 
-    (define value
-     (lambda (E)
-      (lambda (e)
+ (define value
+   (lambda (E)
+     (lambda (e)
        (letrec ((V (lambda₁-cases expression
-                    (Id (id) (E id))
-                    (Lambda (var body) (lambda (x)
-                                        (let₁ (E₁ ((extend E) `(,var . ,x)))
-                                         ((value E₁) body))))
-                    (Comb (rator rand) ((V rator) (V rand)))
-                    (If (q a o) (if (V q) (V a) (V o)))
-                    (J () (error "((value E) J) not implemented")))))
-        (V e)))))
+				  (Id (id) (E id))
+				  (Lambda (var body) (lambda (x)
+						       (let₁ (E₁ ((extend E) `(,var . ,x)))
+							     ((value E₁) body))))
+				  (Comb (rator rand) ((V rator) (V rand)))
+				  (If (q a o) (if (V q) (V a) (V o)))
+				  (J () (error "((value E) J) not implemented")))))
+         (V e)))))
 
     (define-record status S E C D)
 

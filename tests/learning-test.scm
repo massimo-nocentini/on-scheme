@@ -1,10 +1,8 @@
 
-(import chicken scheme)
-
-(use srfi-1 srfi-13 srfi-69)
-(use test matchable numbers)
-
-(use commons)
+(import scheme (chicken base) (chicken port) (chicken sort))
+(import srfi-1 srfi-13 srfi-69)
+(import test matchable)
+(import commons)
 
     (test-group "DELAY-FORCE"
 
@@ -65,8 +63,11 @@
       (test 'new-world (hash-table-ref H 'hello)))
 
      (test '(3 4 5)
-      (hash-table-fold (alist->hash-table '((a . 3) (b . 4) (c . 5)))
-       (lambda (k v acc) (cons v acc)) '()))
+      (sort 
+       (hash-table-fold 
+        (alist->hash-table '((a . 3) (b . 4) (c . 5)))
+        (lambda (k v acc) (cons v acc)) '()) 
+       <))
 
     )
 

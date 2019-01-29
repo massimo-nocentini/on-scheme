@@ -1,10 +1,8 @@
 
 
-(import chicken scheme)
-
-    (use numbers test)
-
-    (use commons SC-machine)
+(import scheme (chicken base) (chicken port) (chicken format))
+    (import test)
+    (import commons SC-machine)
 
     (define E₁ ((extend E₀) '(a . 3)))
     (define E₂ ((extend E₁) '(b . 4)))

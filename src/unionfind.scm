@@ -1,11 +1,9 @@
 
 (module unionfind *
 
-    (import chicken scheme)
-
-    (use srfi-1 srfi-69 data-structures)
-
-    (use commons)
+    (import scheme (chicken base))
+    (import srfi-1 srfi-69)
+    (import commons)
 
     (define-record unionfind π rank)
 
@@ -38,7 +36,7 @@
 
     (define unionfind-size (○ hash-table-size unionfind-π))
 
-    (define unionfind-#edges
+    (define unionfind-edges
      (lambda (U)
       (let ((n 0))
        (unionfind-walk/without-loops U

@@ -7,13 +7,10 @@
 
 (module continuations *
 
- (import scheme chicken)
-
- (use srfi-1)
-
- (use matchable data-structures)
-
- (use commons)
+ (import scheme (chicken base) (chicken continuation))
+ (import srfi-1)
+ (import matchable)
+ (import commons)
 
  (define continuation->λ (curry₁ continuation-return))
 

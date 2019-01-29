@@ -1,13 +1,12 @@
 
 (module streams *
 
- (import chicken scheme)
+ (import scheme (chicken base))
 
- (use srfi-1)
- (use test numbers data-structures)
- ;(use random-bsd)
-
- (use commons)
+ (import srfi-1)
+ (import test)
+ ;(import random-bsd)
+ (import commons)
 
  (define stream:null? (○ null? force))
 

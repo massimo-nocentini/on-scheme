@@ -1,11 +1,10 @@
 
 (module SC-machine *
 
- (import chicken scheme)
-
- (use srfi-1)
- (use data-structures datatype extras)
- (use commons)
+ (import scheme (chicken base) (chicken format))
+ (import srfi-1)
+ (import datatype)
+ (import commons)
 
 
     (define-datatype combination combination?

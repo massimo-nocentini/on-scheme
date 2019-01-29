@@ -1,8 +1,7 @@
 
-    (import chicken scheme)
-
-    (use test)
-    (use collatz)
+    (import scheme (chicken base))
+    (import test)
+    (import collatz)
 
     (test-group "Collatz 3x+1 problem"
 

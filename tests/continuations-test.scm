@@ -1,9 +1,8 @@
 
 
-(import chicken scheme)
-
-(use test)
-(use commons continuations)
+(import scheme (chicken base) (chicken continuation) (chicken port))
+(import test)
+(import commons continuations)
 
 
     (test-group "LETCC syntactic abstraction"
