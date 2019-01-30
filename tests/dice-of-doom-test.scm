@@ -1,10 +1,10 @@
 
-(import scheme (chicken base))
+(import scheme (chicken base) (chicken port) (chicken random))
 (import srfi-1 srfi-13)
 (import test)
 (import commons streams dice-of-doom)
 
-(randomize 1024)
+(set-pseudo-random-seed! "gkfifgousrwbtrm")
 
 (test-group "initial"
  (test

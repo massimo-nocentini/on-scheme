@@ -1,7 +1,7 @@
 
 (module dice-of-doom *
 
- (import scheme (chicken base))
+ (import scheme (chicken base) (chicken format) (chicken fixnum) (chicken random))
  (import srfi-1)
  (import loop)
  (import commons streams series)
@@ -27,15 +27,15 @@
 
 #;(defun gen-board ()
         (board-array (loop for n below *board-hexnum*
-                      collect (list (random *num-players*)
-                          (1+ (random *max-dice*))))))
+                      collect (list (pseudo-random-integer *num-players*)
+                          (1+ (pseudo-random-integer *max-dice*))))))
 
  (define gen-board
   (lambda (size players dices)
    (let* ((select-player (flist-ref players))
           (num-players (length players))
-          (choose-player (○ select-player random (K num-players)))
-          (assign-dices (○ add1 random (K dices)))
+          (choose-player (○ select-player pseudo-random-integer (K num-players)))
+          (assign-dices (○ add1 pseudo-random-integer (K dices)))
           (ctors (list choose-player assign-dices))
           (R (lambda (i) (map ($ i) ctors))))
     (make-board (list->vector (list-tabulate (² size) R)) size))))
